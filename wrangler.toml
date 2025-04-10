@@ -1,0 +1,4 @@
+name = "penedex-worker"
+main = "worker/index.js"
+compatibility_date = "2025-04-10"
+pages_build_output_dir = "."
