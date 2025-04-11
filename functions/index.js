@@ -14,7 +14,7 @@ export default {
 };
 
 async function handleLocations() {
-  const cloudKitEndpoint = "https://api.apple-cloudkit.com/database/1/iCloud.com.biscuitstudios.Penedex/production/public/records/query";
+  const cloudKitEndpoint = "https://api.apple-cloudkit.com/database/1/iCloud.com.biscuitstudios.penedex/production/public/records/query";
   const cloudKitApiToken = "38354ca7578a822b3f6a48e35ec9e59830ea443eb8bf5c916c4e472cde70d1b4";
 
   const queryBody = {
