@@ -3,7 +3,7 @@ import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 
 // You'll need to replace this with your Mapbox access token
-const MAPBOX_TOKEN = 'pk.eyJ1IjoiY29ubm9yLXJvc2UiLCJhIjoiY21hNHJzMmQyMGFjaDJyb285MnRmcXYxNSJ9.cxnZ0SZCLpjajX8RtFEMiw';
+const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN;
 mapboxgl.accessToken = MAPBOX_TOKEN;
 
 // iOS system colors
