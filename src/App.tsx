@@ -1118,6 +1118,16 @@ const stores: StationeryStore[] = [
     website: 'librairedialogues.fr',
     state: 'Bretagne',
     country: 'France'
+  },
+  {
+    id: '108',
+    name: 'Lighthouse Paper Co.',
+    address: '3600 N Wickham Rd Suite 105, Melbourne, FL 32935',
+    latitude: 28.1636979165901,
+    longitude: -80.6725446644178,
+    website: 'http://www.lighthousepaper.com/',
+    state: 'Florida',
+    country: 'United States'
   }
 ];
 
