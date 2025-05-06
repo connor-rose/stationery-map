@@ -64,6 +64,159 @@ const stores: StationeryStore[] = [
     country: 'United States'
   },
   {
+    id: '109',
+    name: 'Papier Plume',
+    address: '842 Royal St, New Orleans, LA 70116',
+    latitude: 29.95953,
+    longitude: -90.06325,
+    website: 'https://papierplume.com',
+    state: 'Louisiana',
+    country: 'United States'
+  },
+  {
+    id: '110',
+    name: 'Gus and Ruby Letterpress',
+    address: '47 Exchange St, Portland, ME 04101',
+    latitude: 43.6571,
+    longitude: -70.2553,
+    website: 'https://www.gusandruby.com',
+    state: 'Maine',
+    country: 'United States'
+  },
+  {
+    id: '111',
+    name: 'Saint-Gilles Stationery',
+    address: 'Chau. de Charleroi 4, 1060 Saint-Gilles, Belgium',
+    latitude: 50.8275,
+    longitude: 4.3472,
+    state: 'Brussels',
+    country: 'Belgium'
+  },
+  {
+    id: '112',
+    name: 'Papeterie NIAS Bruxelles',
+    address: 'Rue de la Régence 2, 1000 Bruxelles, Belgium',
+    latitude: 50.8417,
+    longitude: 4.3606,
+    state: 'Brussels',
+    country: 'Belgium'
+  },
+  {
+    id: '113',
+    name: 'Sakura Fountain Pen Gallery',
+    address: 'Rue de la Régence 2, 1000 Bruxelles, Belgium',
+    latitude: 50.8417,
+    longitude: 4.3606,
+    state: 'Brussels',
+    country: 'Belgium'
+  },
+  {
+    id: '114',
+    name: 'Pen World',
+    address: 'Paardenmarkt 116, 2000 Antwerpen, Belgium',
+    latitude: 51.2214,
+    longitude: 4.4057,
+    state: 'Antwerp',
+    country: 'Belgium'
+  },
+  {
+    id: '115',
+    name: 'Toronto Pen Shoppe',
+    address: 'Toronto, ON, Canada',
+    latitude: 43.64986,
+    longitude: -79.35879,
+    website: 'https://torontopenshoppe.com',
+    state: 'Ontario',
+    country: 'Canada'
+  },
+  {
+    id: '116',
+    name: 'Laywine\'s',
+    address: '1200 Bay St, Toronto, ON M5R 2A5, Canada',
+    latitude: 43.6702,
+    longitude: -79.3897,
+    state: 'Ontario',
+    country: 'Canada'
+  },
+  {
+    id: '117',
+    name: 'Paper and Poste',
+    address: '1112 Queen St E, Toronto, ON M4M 1K8, Canada',
+    latitude: 43.6624,
+    longitude: -79.3447,
+    state: 'Ontario',
+    country: 'Canada'
+  },
+  {
+    id: '118',
+    name: 'Blesket Canada',
+    address: '284 Orenda Rd Unit 5, Brampton, ON L6T 5S3, Canada',
+    latitude: 43.6855,
+    longitude: -79.7592,
+    state: 'Ontario',
+    country: 'Canada'
+  },
+  {
+    id: '119',
+    name: 'Wonder Pens (Dundas)',
+    address: '906 Dundas St W, Toronto, ON M6J 1V9, Canada',
+    latitude: 43.6532,
+    longitude: -79.4117,
+    website: 'https://wonderpens.ca',
+    state: 'Ontario',
+    country: 'Canada'
+  },
+  {
+    id: '120',
+    name: 'Wonder Pens (Danforth)',
+    address: '247 Danforth Ave, Toronto, ON M4K 1N2, Canada',
+    latitude: 43.6765,
+    longitude: -79.3528,
+    website: 'https://wonderpens.ca',
+    state: 'Ontario',
+    country: 'Canada'
+  },
+  {
+    id: '121',
+    name: 'Papierhaus Hartmann',
+    address: 'Hauptstraße 1, 10117 Berlin, Germany',
+    latitude: 52.5200,
+    longitude: 13.4050,
+    website: 'https://www.papierhaus-hartmann.shop',
+    state: 'Berlin',
+    country: 'Germany'
+  },
+  {
+    id: '122',
+    name: 'Moranga',
+    address: 'Oranienstraße 183, 10999 Berlin, Germany',
+    latitude: 52.4977,
+    longitude: 13.4228,
+    website: 'https://www.moranga.de',
+    state: 'Berlin',
+    country: 'Germany'
+  },
+  {
+    id: '123',
+    name: 'Luiban',
+    address: 'Grolmanstraße 54, 10623 Berlin, Germany',
+    latitude: 52.5074,
+    longitude: 13.3219,
+    website: 'https://luiban.com',
+    state: 'Berlin',
+    country: 'Germany'
+  },
+  {
+    id: '124',
+    name: 'RSVP Berlin',
+    address: 'Grolmanstraße 54, 10623 Berlin, Germany',
+    latitude: 52.5074,
+    longitude: 13.3219,
+    website: 'https://rsvp-berlin.de',
+    state: 'Berlin',
+    country: 'Germany'
+  },
+  {
     id: '2',
     name: 'Maido Stationery',
     address: '1672 Post St, San Francisco, CA 94115',
@@ -1128,6 +1281,116 @@ const stores: StationeryStore[] = [
     website: 'http://www.lighthousepaper.com/',
     state: 'Florida',
     country: 'United States'
+  },
+  {
+    id: '131',
+    name: 'Japan Stationery',
+    address: '1-2-1 Nihonbashi, Chuo-ku, Tokyo 103-0027, Japan',
+    latitude: 35.6804,
+    longitude: 139.7671,
+    website: 'https://www.japan-stationery.com/',
+    state: 'Tokyo',
+    country: 'Japan'
+  },
+  {
+    id: '132',
+    name: 'GINZA TSUTAYA BOOKS',
+    address: '6 Chome-10-1 Ginza, Chuo City, Tokyo 104-0061, Japan (ＳＩＸ６階)',
+    latitude: 35.6696,
+    longitude: 139.7645,
+    website: 'https://store.tsite.jp/ginza/',
+    state: 'Tokyo',
+    country: 'Japan'
+  },
+  {
+    id: '133',
+    name: 'Stickerrific',
+    address: '19-1, Jalan 17/45, Seksyen 17, 46400 Petaling Jaya, Selangor, Malaysia',
+    latitude: 3.1206,
+    longitude: 101.6342,
+    website: 'https://stickerrificstore.com/',
+    state: 'Selangor',
+    country: 'Malaysia'
+  },
+  {
+    id: '134',
+    name: 'KSGills Pen Gifts',
+    address: '79 Jalan Sultan, 50000 Kuala Lumpur, Malaysia',
+    latitude: 3.1446,
+    longitude: 101.6975,
+    website: 'https://www.ksgills.com/',
+    state: 'Kuala Lumpur',
+    country: 'Malaysia'
+  },
+  {
+    id: '135',
+    name: 'Faber-Castell',
+    address: 'Menara UAC, Jalan PJU 7/5, Mutiara Damansara, 47800 Petaling Jaya, Selangor, Malaysia',
+    latitude: 3.1542,
+    longitude: 101.6090,
+    website: 'https://www.faber-castell.com.my/',
+    state: 'Selangor',
+    country: 'Malaysia'
+  },
+  {
+    id: '136',
+    name: 'Lamy Pen Shop',
+    address: 'Lot 10 Shopping Centre, 50, Jalan Sultan Ismail, Bukit Bintang, 50250 Kuala Lumpur, Malaysia',
+    latitude: 3.1466,
+    longitude: 101.7122,
+    website: 'https://www.lamy.com.my/',
+    state: 'Kuala Lumpur',
+    country: 'Malaysia'
+  },
+  {
+    id: '137',
+    name: 'PenGallery',
+    address: '19-3, Jalan 17/45, Seksyen 17, 46400 Petaling Jaya, Selangor, Malaysia',
+    latitude: 3.1206,
+    longitude: 101.6342,
+    website: 'https://www.pengallery.com/',
+    state: 'Selangor',
+    country: 'Malaysia'
+  },
+  {
+    id: '138',
+    name: 'Present and Correct',
+    address: '12 Bury Pl, London, WC1A 2JL, England',
+    latitude: 51.51848,
+    longitude: -0.12416,
+    website: 'https://www.presentandcorrect.com/',
+    state: 'England',
+    country: 'United Kingdom'
+  },
+  {
+    id: '139',
+    name: 'Choosing Keeping',
+    address: '21 Tower St, London, WC2H 9NS, England',
+    latitude: 51.51312,
+    longitude: -0.12745,
+    website: 'https://choosingkeeping.com/',
+    state: 'England',
+    country: 'United Kingdom'
+  },
+  {
+    id: '140',
+    name: 'Warren & Son',
+    address: '85 High Street, Winchester, SO23 9AE, England',
+    latitude: 51.06327,
+    longitude: -1.31742,
+    website: 'https://www.warrenandson.com/about-us/',
+    state: 'England',
+    country: 'United Kingdom'
+  },
+  {
+    id: '141',
+    name: 'London Graphic Centre',
+    address: '16-18 Shelton St, Covent Garden, WC2H 9JL, England',
+    latitude: 51.5133,
+    longitude: -0.12602,
+    website: 'https://www.londongraphics.co.uk/',
+    state: 'England',
+    country: 'United Kingdom'
   }
 ];
 
