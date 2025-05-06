@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useMemo } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
+import StationeryIcon from './assets/Default.png';
 
 // You'll need to replace this with your Mapbox access token
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN;
@@ -1723,6 +1724,18 @@ function App() {
             display: 'flex',
             alignItems: 'center'
           }}>
+            <img
+              src={StationeryIcon}
+              alt="Stationery Icon"
+              style={{
+                width: 48,
+                height: 48,
+                borderRadius: 12,
+                marginRight: 16,
+                background: 'white',
+                boxShadow: `0 2px 8px ${colors.shadow}`
+              }}
+            />
             <div>
               <h1 style={{ 
                 fontSize: '24px',
