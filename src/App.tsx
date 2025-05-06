@@ -1141,18 +1141,17 @@ function App() {
   const [mapError, setMapError] = useState<string | null>(null);
   const [selectedStore, setSelectedStore] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const [isInputFocused, setIsInputFocused] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(() => {
-    // Check if user has a saved preference
     const saved = localStorage.getItem('darkMode');
     if (saved !== null) {
       return JSON.parse(saved);
     }
-    // Check system preference
     return window.matchMedia('(prefers-color-scheme: dark)').matches;
   });
   const [expandedCountries, setExpandedCountries] = useState<{ [key: string]: boolean }>(() => {
     const groups: { [key: string]: CountryGroup } = {};
-    
     stores.forEach(store => {
       const country = store.country || 'United States';
       if (!groups[country]) {
@@ -1163,32 +1162,18 @@ function App() {
         };
       }
     });
-    
     const firstCountry = Object.keys(groups)[0];
     return firstCountry ? { [firstCountry]: true } : {};
   });
   const [expandedStates, setExpandedStates] = useState<{ [key: string]: boolean }>({});
+  const [isMobile, setIsMobile] = useState(() => {
+    const userAgent = navigator.userAgent.toLowerCase();
+    return /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(userAgent);
+  });
+  const [isListOpen, setIsListOpen] = useState(false);
 
   // Update colors based on mode
   const colors = isDarkMode ? darkColors : lightColors;
-
-  // Listen for system preference changes
-  useEffect(() => {
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    const handleChange = (e: MediaQueryListEvent) => {
-      if (localStorage.getItem('darkMode') === null) {
-        setIsDarkMode(e.matches);
-      }
-    };
-
-    mediaQuery.addEventListener('change', handleChange);
-    return () => mediaQuery.removeEventListener('change', handleChange);
-  }, []);
-
-  // Save preference to localStorage
-  useEffect(() => {
-    localStorage.setItem('darkMode', JSON.stringify(isDarkMode));
-  }, [isDarkMode]);
 
   // Group stores by country and state
   const groupedStores = useMemo<{ [key: string]: CountryGroup }>(() => {
@@ -1282,17 +1267,24 @@ function App() {
       try {
         console.log('Initializing map with token:', MAPBOX_TOKEN);
         
+        // Ensure the map container has dimensions
+        const container = mapContainer.current;
+        if (container.offsetHeight === 0) {
+          container.style.height = '100%';
+          container.style.width = '100%';
+        }
+        
         // Initialize the map
         map.current = new mapboxgl.Map({
           container: mapContainer.current,
-          style: 'mapbox://styles/mapbox/streets-v12', // Always use default colored style
+          style: 'mapbox://styles/mapbox/streets-v12',
           center: [lng, lat],
           zoom: zoom,
           attributionControl: true
         });
 
         // Add navigation controls
-        map.current.addControl(new mapboxgl.NavigationControl(), 'top-right');
+        map.current.addControl(new mapboxgl.NavigationControl(), 'bottom-right');
 
         // Handle map load
         map.current.on('load', () => {
@@ -1305,54 +1297,30 @@ function App() {
 
           // Add markers for each store
           stores.forEach(store => {
-            // Create popup with iOS-style design
-            const popup = new mapboxgl.Popup({ 
-              offset: 25,
-              className: 'ios-popup',
-              closeButton: false
-            }).setHTML(`
-              <div style="
-                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-                padding: 16px;
-                color: #000000;
-                background-color: #FFFFFF;
-                border-radius: 12px;
-              ">
-                <h3 style="
-                  font-size: 17px;
-                  font-weight: 600;
-                  margin: 0 0 8px 0;
-                  color: #000000;
-                ">${store.name}</h3>
-                <p style="
-                  font-size: 15px;
-                  margin: 0 0 12px 0;
-                  color: #000000;
-                ">${store.address}</p>
-                ${store.website ? `
-                  <a href="${store.website}" 
-                     target="_blank" 
-                     style="
-                       color: #FFFFFF;
-                       text-decoration: none;
-                       font-size: 15px;
-                       font-weight: 500;
-                       display: inline-block;
-                       background-color: #007AFF;
-                       padding: 8px 12px;
-                       border-radius: 8px;
-                       transition: background-color 0.2s ease;
-                     "
-                     onmouseover="this.style.backgroundColor='#0063CC'"
-                     onmouseout="this.style.backgroundColor='#007AFF'"
-                  >Visit Website</a>
-                ` : ''}
-              </div>
-            `);
+            const popup = new mapboxgl.Popup({ offset: 25 })
+              .setHTML(`
+                <div style="padding: 12px;">
+                  <h3 style="margin: 0 0 8px 0; font-size: 16px; color: #000000;">${store.name}</h3>
+                  <p style="margin: 0 0 12px 0; font-size: 14px; color: #000000;">${store.address}</p>
+                  ${store.website ? `
+                    <a href="${store.website}" 
+                       target="_blank" 
+                       style="
+                         color: #FFFFFF;
+                         text-decoration: none;
+                         font-size: 14px;
+                         display: inline-block;
+                         background-color: #007AFF;
+                         padding: 8px 12px;
+                         border-radius: 6px;
+                       "
+                    >Visit Website</a>
+                  ` : ''}
+                </div>
+              `);
 
-            // Create marker
             const marker = new mapboxgl.Marker({
-              color: '#FF9500' // iOS orange color
+              color: '#FF9500'
             })
               .setLngLat([store.longitude, store.latitude])
               .setPopup(popup)
@@ -1376,7 +1344,7 @@ function App() {
 
     // Update map style when dark mode changes
     if (map.current) {
-      map.current.setStyle('mapbox://styles/mapbox/streets-v12'); // Always use default colored style
+      map.current.setStyle('mapbox://styles/mapbox/streets-v12');
     }
 
     // Cleanup function
@@ -1386,19 +1354,16 @@ function App() {
         map.current = null;
       }
     };
-  }, [lng, lat, zoom, isDarkMode, colors]);
+  }, [lng, lat, zoom, isDarkMode]);
 
-  // Add this function after the useEffect hooks
   const handleStoreClick = (store: StationeryStore) => {
     if (map.current) {
-      // Fly to the store location
       map.current.flyTo({
         center: [store.longitude, store.latitude],
         zoom: 15,
         duration: 1000
       });
 
-      // Open the popup for the store
       const marker = markers.current.find(m => 
         m.getLngLat().lng === store.longitude && 
         m.getLngLat().lat === store.latitude
@@ -1408,6 +1373,9 @@ function App() {
       }
 
       setSelectedStore(store.id);
+      if (isMobile) {
+        setIsListOpen(false);
+      }
     }
   };
 
@@ -1423,6 +1391,36 @@ function App() {
       ...prev,
       [stateName]: !prev[stateName]
     }));
+  };
+
+  // Force focus on mobile when list is open
+  useEffect(() => {
+    if (isMobile && isListOpen && !isInputFocused) {
+      const timer = setTimeout(() => {
+        if (searchInputRef.current) {
+          searchInputRef.current.focus();
+          setIsInputFocused(true);
+        }
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [isMobile, isListOpen, isInputFocused]);
+
+  // Handle focus management
+  const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (searchInputRef.current) {
+      searchInputRef.current.focus();
+    }
+  };
+
+  // Handle input changes
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(e.target.value);
+    if (searchInputRef.current) {
+      searchInputRef.current.focus();
+    }
   };
 
   return (
@@ -1452,11 +1450,13 @@ function App() {
           width: '100%',
           padding: '0 1rem',
           display: 'flex',
+          flexDirection: isMobile ? 'column' : 'row',
           justifyContent: 'space-between',
-          alignItems: 'center'
+          alignItems: isMobile ? 'flex-start' : 'center',
+          gap: isMobile ? '12px' : '0'
         }}>
           <div style={{
-            flex: 1.5,
+            flex: 1,
             display: 'flex',
             alignItems: 'center'
           }}>
@@ -1466,7 +1466,8 @@ function App() {
                 fontWeight: '700',
                 color: colors.text,
                 margin: 0,
-                textAlign: 'left'
+                textAlign: 'left',
+                whiteSpace: 'nowrap'
               }}>Stationery Store Map</h1>
               <p style={{
                 fontSize: '15px',
@@ -1474,7 +1475,7 @@ function App() {
                 margin: '4px 0 0 0',
                 textAlign: 'left'
               }}>
-                powered by{' '}
+                Powered by{' '}
                 <a 
                   href="https://www.penedex.com" 
                   target="_blank" 
@@ -1491,34 +1492,62 @@ function App() {
             </div>
           </div>
           <div style={{
-            width: '280px',
+            width: isMobile ? '100%' : '400px',
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'flex-end',
-            gap: '16px'
+            justifyContent: isMobile ? 'space-between' : 'flex-end',
+            gap: '12px',
+            position: 'relative',
+            marginLeft: isMobile ? '0' : 'auto',
+            marginRight: isMobile ? '0' : 'auto'
           }}>
-            <button
-              onClick={() => window.location.href = 'mailto:hello@penedex.com?subject=New Stationery Store Submission'}
-              style={{
-                backgroundColor: 'transparent',
-                border: 'none',
-                color: colors.text,
-                fontSize: '15px',
-                fontWeight: '500',
-                padding: '8px 12px',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                transition: 'all 0.2s ease'
-              }}
-              onMouseOver={(e) => {
-                e.currentTarget.style.backgroundColor = isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)';
-              }}
-              onMouseOut={(e) => {
-                e.currentTarget.style.backgroundColor = 'transparent';
-              }}
-            >
-              Submit Store Info
-            </button>
+            <div style={{
+              display: 'flex',
+              gap: '12px',
+              flex: 1,
+              justifyContent: isMobile ? 'center' : 'flex-end'
+            }}>
+              {isMobile && (
+                <button
+                  onClick={() => setIsListOpen(true)}
+                  style={{
+                    backgroundColor: 'transparent',
+                    border: 'none',
+                    color: colors.text,
+                    fontSize: '15px',
+                    fontWeight: '500',
+                    padding: '8px 12px',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    whiteSpace: 'nowrap',
+                    flex: 1,
+                    textAlign: 'center'
+                  }}
+                >
+                  Show List
+                </button>
+              )}
+              <button
+                onClick={() => window.location.href = 'mailto:hello@penedex.com?subject=New Stationery Store Submission'}
+                style={{
+                  backgroundColor: 'transparent',
+                  border: 'none',
+                  color: colors.text,
+                  fontSize: '15px',
+                  fontWeight: '500',
+                  padding: '8px 12px',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  whiteSpace: 'nowrap',
+                  flex: isMobile ? 1 : 'none',
+                  textAlign: 'center'
+                }}
+              >
+                Submit Store Info
+              </button>
+            </div>
             <button
               onClick={() => setIsDarkMode(!isDarkMode)}
               style={{
@@ -1533,13 +1562,8 @@ function App() {
                 alignItems: 'center',
                 justifyContent: 'center',
                 transition: 'all 0.2s ease',
-                padding: 0
-              }}
-              onMouseOver={(e) => {
-                e.currentTarget.style.backgroundColor = isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)';
-              }}
-              onMouseOut={(e) => {
-                e.currentTarget.style.backgroundColor = 'transparent';
+                padding: 0,
+                marginLeft: '24px'
               }}
             >
               {isDarkMode ? (
@@ -1563,25 +1587,28 @@ function App() {
           </div>
         </div>
       </header>
-      
+
       <main style={{ 
         flex: 1,
-        padding: '1rem',
+        padding: isMobile ? '0' : '1rem',
         maxWidth: '1200px',
         margin: '0 auto',
         width: '100%',
         display: 'flex',
         gap: '1rem',
-        height: 'calc(100vh - 80px)'
+        height: isMobile ? 'calc(100vh - 80px)' : 'calc(100vh - 80px)',
+        position: 'relative'
       }}>
+        {/* Map always visible on mobile; list is overlay. On desktop, both visible. */}
         <div style={{
           flex: 1.5,
           position: 'relative',
           backgroundColor: colors.card,
-          borderRadius: '10px',
-          boxShadow: `0 2px 8px ${colors.shadow}`,
+          borderRadius: isMobile ? '0' : '10px',
+          boxShadow: isMobile ? 'none' : `0 2px 8px ${colors.shadow}`,
           overflow: 'hidden',
           height: '100%',
+          width: '100%',
           transition: 'background-color 0.3s ease, box-shadow 0.3s ease'
         }}>
           {mapError ? (
@@ -1606,252 +1633,522 @@ function App() {
                 right: 0,
                 bottom: 0,
                 width: '100%',
-                height: '100%'
+                height: '100%',
+                minHeight: '300px'
               }} 
             />
           )}
         </div>
 
-        <div style={{
-          width: '280px',
-          backgroundColor: colors.card,
-          borderRadius: '10px',
-          boxShadow: `0 2px 8px ${colors.shadow}`,
-          overflow: 'hidden',
-          display: 'flex',
-          flexDirection: 'column',
-          transition: 'background-color 0.3s ease, box-shadow 0.3s ease',
-          height: '100%'
-        }}>
+        {/* Mobile List Overlay */}
+        {isMobile && isListOpen && (
           <div style={{
-            padding: '1rem',
-            borderBottom: `1px solid ${colors.border}`,
-            backgroundColor: colors.card,
-            flexShrink: 0 // Prevent header from shrinking
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: colors.background,
+            zIndex: 1000,
+            display: 'flex',
+            flexDirection: 'column'
           }}>
-            <h2 style={{
-              fontSize: '17px',
-              fontWeight: '600',
-              margin: '0 0 12px 0',
-              color: colors.text
-            }}>Stores</h2>
             <div style={{
-              position: 'relative'
+              padding: '1rem',
+              borderBottom: `1px solid ${colors.border}`,
+              backgroundColor: colors.card,
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center'
             }}>
-              <input
-                type="text"
-                placeholder="Search stores..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+              <h2 style={{
+                fontSize: '17px',
+                fontWeight: '600',
+                margin: 0,
+                color: colors.text
+              }}>Stores</h2>
+              <button
+                onClick={() => setIsListOpen(false)}
                 style={{
-                  width: '100%',
-                  padding: '8px 12px',
-                  paddingLeft: '32px',
-                  borderRadius: '8px',
-                  border: `1px solid ${colors.border}`,
-                  backgroundColor: colors.background,
+                  backgroundColor: 'transparent',
+                  border: 'none',
                   color: colors.text,
-                  fontSize: '15px',
-                  outline: 'none',
-                  transition: 'border-color 0.2s ease'
-                }}
-              />
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke={colors.secondaryText}
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                style={{
-                  position: 'absolute',
-                  left: '10px',
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  pointerEvents: 'none'
+                  padding: '8px',
+                  cursor: 'pointer'
                 }}
               >
-                <circle cx="11" cy="11" r="8"/>
-                <line x1="21" y1="21" x2="16.65" y2="16.65"/>
-              </svg>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+              </button>
             </div>
-          </div>
-          <div style={{
-            flex: 1,
-            overflowY: 'auto',
-            padding: '0.5rem',
-            minHeight: 0 // Ensure proper scrolling behavior
-          }}>
-            {Object.entries(filteredGroups).map(([countryName, country]) => (
-              <div key={countryName} style={{ marginBottom: '16px' }}>
-                <button
-                  onClick={() => handleCountryClick(countryName)}
+            <div style={{
+              padding: '1rem',
+              borderBottom: `1px solid ${colors.border}`,
+              backgroundColor: colors.card
+            }}>
+              <div style={{ position: 'relative' }}>
+                <input
+                  ref={searchInputRef}
+                  type="text"
+                  placeholder="Search stores..."
+                  value={searchQuery}
+                  onChange={handleInputChange}
+                  onBlur={handleBlur}
                   style={{
                     width: '100%',
                     padding: '8px 12px',
-                    backgroundColor: 'transparent',
-                    border: 'none',
+                    paddingLeft: '32px',
                     borderRadius: '8px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    cursor: 'pointer',
+                    border: `1px solid ${colors.border}`,
+                    backgroundColor: colors.background,
                     color: colors.text,
-                    transition: 'background-color 0.2s ease',
+                    fontSize: '15px',
+                    outline: 'none',
+                    transition: 'border-color 0.2s ease'
                   }}
-                  onMouseOver={(e) => {
-                    e.currentTarget.style.backgroundColor = isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)';
-                  }}
-                  onMouseOut={(e) => {
-                    e.currentTarget.style.backgroundColor = 'transparent';
+                />
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke={colors.secondaryText}
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  style={{
+                    position: 'absolute',
+                    left: '10px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    pointerEvents: 'none'
                   }}
                 >
-                  <h3 style={{
-                    fontSize: '17px',
-                    fontWeight: '600',
-                    margin: 0,
-                    color: colors.text,
-                    textAlign: 'left',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px'
-                  }}>
-                    {countryName}
-                    <span style={{
-                      fontSize: '13px',
-                      fontWeight: '500',
-                      color: colors.secondaryText,
-                      backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)',
-                      padding: '2px 6px',
-                      borderRadius: '12px'
-                    }}>
-                      {Object.values(country.states).reduce((acc, state) => acc + state.stores.length, 0)}
-                    </span>
-                  </h3>
-                  <svg
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke={colors.text}
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
+                  <circle cx="11" cy="11" r="8"/>
+                  <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                </svg>
+              </div>
+            </div>
+            <div style={{
+              flex: 1,
+              overflowY: 'auto',
+              padding: '0.5rem',
+              backgroundColor: colors.background
+            }}>
+              {Object.entries(filteredGroups).map(([countryName, country]) => (
+                <div key={countryName} style={{ marginBottom: '16px' }}>
+                  <button
+                    onClick={() => handleCountryClick(countryName)}
                     style={{
-                      transform: expandedCountries[countryName] ? 'rotate(90deg)' : 'rotate(0deg)',
-                      transition: 'transform 0.2s ease'
+                      width: '100%',
+                      padding: '8px 12px',
+                      backgroundColor: 'transparent',
+                      border: 'none',
+                      borderRadius: '8px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      cursor: 'pointer',
+                      color: colors.text,
+                      transition: 'background-color 0.2s ease',
+                    }}
+                    onMouseOver={e => {
+                      e.currentTarget.style.backgroundColor = isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)';
+                    }}
+                    onMouseOut={e => {
+                      e.currentTarget.style.backgroundColor = 'transparent';
                     }}
                   >
-                    <polyline points="9 18 15 12 9 6" />
-                  </svg>
-                </button>
-                {expandedCountries[countryName] && Object.entries(country.states).map(([stateName, state]) => (
-                  <div key={stateName} style={{ marginLeft: '12px', marginTop: '8px' }}>
-                    <button
-                      onClick={() => handleStateClick(stateName)}
+                    <h3 style={{
+                      fontSize: '17px',
+                      fontWeight: '600',
+                      margin: 0,
+                      color: colors.text,
+                      textAlign: 'left',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px'
+                    }}>
+                      {countryName}
+                      <span style={{
+                        fontSize: '13px',
+                        fontWeight: '500',
+                        color: colors.secondaryText,
+                        backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)',
+                        padding: '2px 6px',
+                        borderRadius: '12px'
+                      }}>
+                        {Object.values(country.states).reduce((acc, state) => acc + state.stores.length, 0)}
+                      </span>
+                    </h3>
+                    <svg
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke={colors.text}
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
                       style={{
-                        width: '100%',
-                        padding: '6px 12px',
-                        backgroundColor: 'transparent',
-                        border: 'none',
-                        borderRadius: '8px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        cursor: 'pointer',
-                        color: colors.text,
-                        transition: 'background-color 0.2s ease',
-                      }}
-                      onMouseOver={(e) => {
-                        e.currentTarget.style.backgroundColor = isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)';
-                      }}
-                      onMouseOut={(e) => {
-                        e.currentTarget.style.backgroundColor = 'transparent';
+                        transform: expandedCountries[countryName] ? 'rotate(90deg)' : 'rotate(0deg)',
+                        transition: 'transform 0.2s ease'
                       }}
                     >
-                      <h4 style={{
-                        fontSize: '15px',
-                        fontWeight: '500',
-                        margin: 0,
-                        color: colors.text,
-                        textAlign: 'left',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px'
-                      }}>
-                        {stateName}
-                        <span style={{
-                          fontSize: '12px',
-                          fontWeight: '500',
-                          color: colors.secondaryText,
-                          backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)',
-                          padding: '1px 5px',
-                          borderRadius: '10px'
-                        }}>
-                          {state.stores.length}
-                        </span>
-                      </h4>
-                      <svg
-                        width="14"
-                        height="14"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke={colors.text}
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
+                      <polyline points="9 18 15 12 9 6" />
+                    </svg>
+                  </button>
+                  {expandedCountries[countryName] && Object.entries(country.states).map(([stateName, state]) => (
+                    <div key={stateName} style={{ marginLeft: '12px', marginTop: '8px' }}>
+                      <button
+                        onClick={() => handleStateClick(stateName)}
                         style={{
-                          transform: expandedStates[stateName] ? 'rotate(90deg)' : 'rotate(0deg)',
-                          transition: 'transform 0.2s ease'
+                          width: '100%',
+                          padding: '6px 12px',
+                          backgroundColor: 'transparent',
+                          border: 'none',
+                          borderRadius: '8px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          cursor: 'pointer',
+                          color: colors.text,
+                          transition: 'background-color 0.2s ease',
+                        }}
+                        onMouseOver={e => {
+                          e.currentTarget.style.backgroundColor = isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)';
+                        }}
+                        onMouseOut={e => {
+                          e.currentTarget.style.backgroundColor = 'transparent';
                         }}
                       >
-                        <polyline points="9 18 15 12 9 6" />
-                      </svg>
-                    </button>
-                    {expandedStates[stateName] && (
-                      <div style={{ marginLeft: '12px', marginTop: '4px' }}>
-                        {state.stores.map(store => (
-                          <button
-                            key={store.id}
-                            onClick={() => handleStoreClick(store)}
-                            style={{
-                              width: '100%',
-                              padding: '12px',
-                              marginBottom: '8px',
-                              backgroundColor: selectedStore === store.id ? '#FF9500' : 'transparent',
-                              border: 'none',
-                              borderRadius: '8px',
-                              textAlign: 'left',
-                              cursor: 'pointer',
-                              transition: 'background-color 0.2s ease',
-                              color: selectedStore === store.id ? '#FFFFFF' : colors.text
-                            }}
-                          >
-                            <div style={{
-                              fontSize: '15px',
-                              fontWeight: '600',
-                              marginBottom: '4px'
-                            }}>
-                              {store.name}
-                            </div>
-                            <div style={{
-                              fontSize: '13px',
-                              color: selectedStore === store.id ? 'rgba(255, 255, 255, 0.8)' : colors.secondaryText
-                            }}>
-                              {store.address}
-                            </div>
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            ))}
+                        <h4 style={{
+                          fontSize: '15px',
+                          fontWeight: '500',
+                          margin: 0,
+                          color: colors.text,
+                          textAlign: 'left',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px'
+                        }}>
+                          {stateName}
+                          <span style={{
+                            fontSize: '12px',
+                            fontWeight: '500',
+                            color: colors.secondaryText,
+                            backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)',
+                            padding: '1px 5px',
+                            borderRadius: '10px'
+                          }}>
+                            {state.stores.length}
+                          </span>
+                        </h4>
+                        <svg
+                          width="14"
+                          height="14"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke={colors.text}
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          style={{
+                            transform: expandedStates[stateName] ? 'rotate(90deg)' : 'rotate(0deg)',
+                            transition: 'transform 0.2s ease'
+                          }}
+                        >
+                          <polyline points="9 18 15 12 9 6" />
+                        </svg>
+                      </button>
+                      {expandedStates[stateName] && (
+                        <div style={{ marginLeft: '12px', marginTop: '4px' }}>
+                          {state.stores.map(store => (
+                            <button
+                              key={store.id}
+                              onClick={() => handleStoreClick(store)}
+                              style={{
+                                width: '100%',
+                                padding: '12px',
+                                marginBottom: '8px',
+                                backgroundColor: selectedStore === store.id ? '#FF9500' : 'transparent',
+                                border: 'none',
+                                borderRadius: '8px',
+                                textAlign: 'left',
+                                cursor: 'pointer',
+                                transition: 'background-color 0.2s ease',
+                                color: selectedStore === store.id ? '#FFFFFF' : colors.text
+                              }}
+                            >
+                              <div style={{
+                                fontSize: '15px',
+                                fontWeight: '600',
+                                marginBottom: '4px'
+                              }}>
+                                {store.name}
+                              </div>
+                              <div style={{
+                                fontSize: '13px',
+                                color: selectedStore === store.id ? 'rgba(255, 255, 255, 0.8)' : colors.secondaryText
+                              }}>
+                                {store.address}
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
+
+        {/* Desktop: list always visible. Mobile: list is overlay. */}
+        {!isMobile && (
+          <div style={{
+            width: '280px',
+            backgroundColor: colors.card,
+            borderRadius: '10px',
+            boxShadow: `0 2px 8px ${colors.shadow}`,
+            overflow: 'hidden',
+            display: 'flex',
+            flexDirection: 'column',
+            transition: 'background-color 0.3s ease, box-shadow 0.3s ease',
+            height: '100%'
+          }}>
+            {/* --- List UI from above --- */}
+            <div style={{
+              padding: '1rem',
+              borderBottom: `1px solid ${colors.border}`,
+              backgroundColor: colors.card,
+              flexShrink: 0
+            }}>
+              <h2 style={{
+                fontSize: '17px',
+                fontWeight: '600',
+                margin: '0 0 12px 0',
+                color: colors.text
+              }}>Stores</h2>
+              <div style={{ position: 'relative' }}>
+                <input
+                  type="text"
+                  placeholder="Search stores..."
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '8px 12px',
+                    paddingLeft: '32px',
+                    borderRadius: '8px',
+                    border: `1px solid ${colors.border}`,
+                    backgroundColor: colors.background,
+                    color: colors.text,
+                    fontSize: '15px',
+                    outline: 'none',
+                    transition: 'border-color 0.2s ease'
+                  }}
+                />
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke={colors.secondaryText}
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  style={{
+                    position: 'absolute',
+                    left: '10px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    pointerEvents: 'none'
+                  }}
+                >
+                  <circle cx="11" cy="11" r="8"/>
+                  <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                </svg>
+              </div>
+            </div>
+            <div style={{
+              flex: 1,
+              overflowY: 'auto',
+              padding: '0.5rem',
+              minHeight: 0
+            }}>
+              {Object.entries(filteredGroups).map(([countryName, country]) => (
+                <div key={countryName} style={{ marginBottom: '16px' }}>
+                  <button
+                    onClick={() => handleCountryClick(countryName)}
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px',
+                      backgroundColor: 'transparent',
+                      border: 'none',
+                      borderRadius: '8px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      cursor: 'pointer',
+                      color: colors.text,
+                      transition: 'background-color 0.2s ease',
+                    }}
+                    onMouseOver={e => {
+                      e.currentTarget.style.backgroundColor = isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)';
+                    }}
+                    onMouseOut={e => {
+                      e.currentTarget.style.backgroundColor = 'transparent';
+                    }}
+                  >
+                    <h3 style={{
+                      fontSize: '17px',
+                      fontWeight: '600',
+                      margin: 0,
+                      color: colors.text,
+                      textAlign: 'left',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px'
+                    }}>
+                      {countryName}
+                      <span style={{
+                        fontSize: '13px',
+                        fontWeight: '500',
+                        color: colors.secondaryText,
+                        backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)',
+                        padding: '2px 6px',
+                        borderRadius: '12px'
+                      }}>
+                        {Object.values(country.states).reduce((acc, state) => acc + state.stores.length, 0)}
+                      </span>
+                    </h3>
+                    <svg
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke={colors.text}
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      style={{
+                        transform: expandedCountries[countryName] ? 'rotate(90deg)' : 'rotate(0deg)',
+                        transition: 'transform 0.2s ease'
+                      }}
+                    >
+                      <polyline points="9 18 15 12 9 6" />
+                    </svg>
+                  </button>
+                  {expandedCountries[countryName] && Object.entries(country.states).map(([stateName, state]) => (
+                    <div key={stateName} style={{ marginLeft: '12px', marginTop: '8px' }}>
+                      <button
+                        onClick={() => handleStateClick(stateName)}
+                        style={{
+                          width: '100%',
+                          padding: '6px 12px',
+                          backgroundColor: 'transparent',
+                          border: 'none',
+                          borderRadius: '8px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          cursor: 'pointer',
+                          color: colors.text,
+                          transition: 'background-color 0.2s ease',
+                        }}
+                        onMouseOver={e => {
+                          e.currentTarget.style.backgroundColor = isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)';
+                        }}
+                        onMouseOut={e => {
+                          e.currentTarget.style.backgroundColor = 'transparent';
+                        }}
+                      >
+                        <h4 style={{
+                          fontSize: '15px',
+                          fontWeight: '500',
+                          margin: 0,
+                          color: colors.text,
+                          textAlign: 'left',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px'
+                        }}>
+                          {stateName}
+                          <span style={{
+                            fontSize: '12px',
+                            fontWeight: '500',
+                            color: colors.secondaryText,
+                            backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)',
+                            padding: '1px 5px',
+                            borderRadius: '10px'
+                          }}>
+                            {state.stores.length}
+                          </span>
+                        </h4>
+                        <svg
+                          width="14"
+                          height="14"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke={colors.text}
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          style={{
+                            transform: expandedStates[stateName] ? 'rotate(90deg)' : 'rotate(0deg)',
+                            transition: 'transform 0.2s ease'
+                          }}
+                        >
+                          <polyline points="9 18 15 12 9 6" />
+                        </svg>
+                      </button>
+                      {expandedStates[stateName] && (
+                        <div style={{ marginLeft: '12px', marginTop: '4px' }}>
+                          {state.stores.map(store => (
+                            <button
+                              key={store.id}
+                              onClick={() => handleStoreClick(store)}
+                              style={{
+                                width: '100%',
+                                padding: '12px',
+                                marginBottom: '8px',
+                                backgroundColor: selectedStore === store.id ? '#FF9500' : 'transparent',
+                                border: 'none',
+                                borderRadius: '8px',
+                                textAlign: 'left',
+                                cursor: 'pointer',
+                                transition: 'background-color 0.2s ease',
+                                color: selectedStore === store.id ? '#FFFFFF' : colors.text
+                              }}
+                            >
+                              <div style={{
+                                fontSize: '15px',
+                                fontWeight: '600',
+                                marginBottom: '4px'
+                              }}>
+                                {store.name}
+                              </div>
+                              <div style={{
+                                fontSize: '13px',
+                                color: selectedStore === store.id ? 'rgba(255, 255, 255, 0.8)' : colors.secondaryText
+                              }}>
+                                {store.address}
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </main>
     </div>
   );
