@@ -1430,7 +1430,8 @@ function App() {
     return firstCountry ? { [firstCountry]: true } : {};
   });
   const [expandedStates, setExpandedStates] = useState<{ [key: string]: boolean }>({});
-  const [isMobile] = useState(() => {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [isMobile, setIsMobile] = useState(() => {
     const userAgent = navigator.userAgent.toLowerCase();
     return /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(userAgent);
   });
