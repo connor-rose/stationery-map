@@ -55,6 +55,16 @@ interface CountryGroup {
 // Sample store data
 const stores: StationeryStore[] = [
   {
+    id: '142',
+    name: 'Truphae, Inc',
+    address: '550 South Main Street, Suite 200, Greenville, SC 29601',
+    latitude: 34.8509,
+    longitude: -82.3989,
+    website: 'https://www.truphaeinc.com',
+    state: 'South Carolina',
+    country: 'United States'
+  },
+  {
     id: '1',
     name: 'Paper Source',
     address: '123 Market St, San Francisco, CA 94105',
