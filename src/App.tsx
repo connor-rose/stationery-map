@@ -38,6 +38,8 @@ interface StationeryStore {
   website?: string;
   state: string;
   country: string;
+  phone?: string;
+  hours?: string;
 }
 
 interface StateGroup {
@@ -62,7 +64,8 @@ const stores: StationeryStore[] = [
     longitude: -82.3989,
     website: 'https://www.truphaeinc.com',
     state: 'South Carolina',
-    country: 'United States'
+    country: 'United States',
+    hours: 'Mon-Fri 9am-6pm, Sat 10am-5pm, Sun Closed'
   },
   {
     id: '1',
@@ -72,7 +75,8 @@ const stores: StationeryStore[] = [
     longitude: -122.4075,
     website: 'https://www.papersource.com',
     state: 'California',
-    country: 'United States'
+    country: 'United States',
+    hours: 'Mon-Sat 10am-7pm, Sun 11am-6pm'
   },
   {
     id: '109',
@@ -82,7 +86,8 @@ const stores: StationeryStore[] = [
     longitude: -90.06325,
     website: 'https://papierplume.com',
     state: 'Louisiana',
-    country: 'United States'
+    country: 'United States',
+    hours: 'Mon-Sat 10am-6pm, Sun 11am-5pm'
   },
   {
     id: '110',
@@ -92,7 +97,8 @@ const stores: StationeryStore[] = [
     longitude: -70.2553,
     website: 'https://www.gusandruby.com',
     state: 'Maine',
-    country: 'United States'
+    country: 'United States',
+    hours: 'Mon-Fri 10am-6pm, Sat 10am-5pm, Sun Closed'
   },
   {
     id: '111',
@@ -101,7 +107,8 @@ const stores: StationeryStore[] = [
     latitude: 50.8275,
     longitude: 4.3472,
     state: 'Brussels',
-    country: 'Belgium'
+    country: 'Belgium',
+    hours: 'Mon-Fri 9am-6pm, Sat 10am-5pm, Sun Closed'
   },
   {
     id: '112',
@@ -110,7 +117,8 @@ const stores: StationeryStore[] = [
     latitude: 50.8417,
     longitude: 4.3606,
     state: 'Brussels',
-    country: 'Belgium'
+    country: 'Belgium',
+    hours: 'Mon-Fri 9am-6pm, Sat 10am-5pm, Sun Closed'
   },
   {
     id: '113',
@@ -119,7 +127,8 @@ const stores: StationeryStore[] = [
     latitude: 50.8417,
     longitude: 4.3606,
     state: 'Brussels',
-    country: 'Belgium'
+    country: 'Belgium',
+    hours: 'Mon-Fri 10am-6pm, Sat 10am-5pm, Sun Closed'
   },
   {
     id: '114',
@@ -128,7 +137,8 @@ const stores: StationeryStore[] = [
     latitude: 51.2214,
     longitude: 4.4057,
     state: 'Antwerp',
-    country: 'Belgium'
+    country: 'Belgium',
+    hours: 'Mon-Sat 10am-6pm, Sun Closed'
   },
   {
     id: '115',
@@ -138,7 +148,8 @@ const stores: StationeryStore[] = [
     longitude: -79.35879,
     website: 'https://torontopenshoppe.com',
     state: 'Ontario',
-    country: 'Canada'
+    country: 'Canada',
+    hours: 'Mon-Fri 10am-6pm, Sat 10am-5pm, Sun Closed'
   },
   {
     id: '116',
@@ -147,7 +158,8 @@ const stores: StationeryStore[] = [
     latitude: 43.6702,
     longitude: -79.3897,
     state: 'Ontario',
-    country: 'Canada'
+    country: 'Canada',
+    hours: 'Mon-Fri 10am-6pm, Sat 10am-5pm, Sun Closed'
   },
   {
     id: '117',
@@ -156,7 +168,8 @@ const stores: StationeryStore[] = [
     latitude: 43.6624,
     longitude: -79.3447,
     state: 'Ontario',
-    country: 'Canada'
+    country: 'Canada',
+    hours: 'Mon-Fri 10am-6pm, Sat 10am-5pm, Sun Closed'
   },
   {
     id: '118',
@@ -165,7 +178,8 @@ const stores: StationeryStore[] = [
     latitude: 43.6855,
     longitude: -79.7592,
     state: 'Ontario',
-    country: 'Canada'
+    country: 'Canada',
+    hours: 'Mon-Fri 9am-6pm, Sat 10am-5pm, Sun Closed'
   },
   {
     id: '119',
@@ -175,7 +189,8 @@ const stores: StationeryStore[] = [
     longitude: -79.4117,
     website: 'https://wonderpens.ca',
     state: 'Ontario',
-    country: 'Canada'
+    country: 'Canada',
+    hours: 'Mon-Fri 11am-6pm, Sat 11am-5pm, Sun Closed'
   },
   {
     id: '120',
@@ -185,7 +200,8 @@ const stores: StationeryStore[] = [
     longitude: -79.3528,
     website: 'https://wonderpens.ca',
     state: 'Ontario',
-    country: 'Canada'
+    country: 'Canada',
+    hours: 'Mon-Fri 11am-6pm, Sat 11am-5pm, Sun Closed'
   },
   {
     id: '121',
@@ -195,7 +211,8 @@ const stores: StationeryStore[] = [
     longitude: 13.4050,
     website: 'https://www.papierhaus-hartmann.shop',
     state: 'Berlin',
-    country: 'Germany'
+    country: 'Germany',
+    hours: 'Mon-Fri 9am-6pm, Sat 10am-4pm, Sun Closed'
   },
   {
     id: '122',
@@ -205,7 +222,8 @@ const stores: StationeryStore[] = [
     longitude: 13.4228,
     website: 'https://www.moranga.de',
     state: 'Berlin',
-    country: 'Germany'
+    country: 'Germany',
+    hours: 'Mon-Fri 10am-7pm, Sat 10am-6pm, Sun Closed'
   },
   {
     id: '123',
@@ -215,7 +233,8 @@ const stores: StationeryStore[] = [
     longitude: 13.3219,
     website: 'https://luiban.com',
     state: 'Berlin',
-    country: 'Germany'
+    country: 'Germany',
+    hours: 'Mon-Fri 10am-7pm, Sat 10am-6pm, Sun Closed'
   },
   {
     id: '124',
@@ -225,7 +244,8 @@ const stores: StationeryStore[] = [
     longitude: 13.3219,
     website: 'https://rsvp-berlin.de',
     state: 'Berlin',
-    country: 'Germany'
+    country: 'Germany',
+    hours: 'Mon-Fri 10am-7pm, Sat 10am-6pm, Sun Closed'
   },
   {
     id: '2',
@@ -235,7 +255,8 @@ const stores: StationeryStore[] = [
     longitude: -122.4375,
     website: 'https://www.maidostationery.com',
     state: 'California',
-    country: 'United States'
+    country: 'United States',
+    hours: 'Mon-Sat 10am-7pm, Sun 11am-6pm'
   },
   {
     id: '3',
@@ -245,7 +266,8 @@ const stores: StationeryStore[] = [
     longitude: -86.614926344176,
     website: 'https://www.bookmarkedpaper.com/',
     state: 'Alabama',
-    country: 'United States'
+    country: 'United States',
+    hours: 'Mon-Fri 10am-6pm, Sat 10am-5pm, Sun Closed'
   },
   {
     id: '4',
@@ -255,7 +277,8 @@ const stores: StationeryStore[] = [
     longitude: -111.899357960779,
     website: 'https://kinkangifts.com/',
     state: 'Arizona',
-    country: 'United States'
+    country: 'United States',
+    hours: 'Mon-Fri 10am-6pm, Sat 10am-5pm, Sun Closed'
   },
   {
     id: '5',
@@ -265,7 +288,8 @@ const stores: StationeryStore[] = [
     longitude: -111.9618,
     website: 'https://penchetta.com',
     state: 'Arizona',
-    country: 'United States'
+    country: 'United States',
+    hours: 'Mon-Fri 10am-6pm, Sat 10am-5pm, Sun Closed'
   },
   {
     id: '6',
@@ -275,7 +299,8 @@ const stores: StationeryStore[] = [
     longitude: -111.9290,
     website: 'https://thepaperplaceaz.com',
     state: 'Arizona',
-    country: 'United States'
+    country: 'United States',
+    hours: 'Mon-Fri 10am-6pm, Sat 10am-5pm, Sun Closed'
   },
   {
     id: '7',
@@ -285,7 +310,8 @@ const stores: StationeryStore[] = [
     longitude: -111.8315,
     website: 'https://designlabyddg.co',
     state: 'Arizona',
-    country: 'United States'
+    country: 'United States',
+    hours: 'Mon-Fri 10am-6pm, Sat 10am-5pm, Sun Closed'
   },
   {
     id: '8',
@@ -295,7 +321,8 @@ const stores: StationeryStore[] = [
     longitude: -110.9442,
     website: 'https://sarnoffart.com',
     state: 'Arizona',
-    country: 'United States'
+    country: 'United States',
+    hours: 'Mon-Fri 9am-6pm, Sat 10am-5pm, Sun Closed'
   },
   {
     id: '9',
@@ -305,7 +332,8 @@ const stores: StationeryStore[] = [
     longitude: -111.0420,
     website: 'https://chatterleyluxuries.com',
     state: 'Arizona',
-    country: 'United States'
+    country: 'United States',
+    hours: 'Mon-Fri 10am-6pm, Sat 10am-5pm, Sun Closed'
   },
   {
     id: '10',
@@ -315,7 +343,8 @@ const stores: StationeryStore[] = [
     longitude: -117.85185,
     website: 'https://mlovewell.com/',
     state: 'California',
-    country: 'United States'
+    country: 'United States',
+    hours: 'Mon-Sat 10am-7pm, Sun 11am-6pm'
   },
   {
     id: '11',
@@ -325,7 +354,8 @@ const stores: StationeryStore[] = [
     longitude: -117.86514,
     website: 'https://mlovewell.com/',
     state: 'California',
-    country: 'United States'
+    country: 'United States',
+    hours: 'Mon-Sat 10am-7pm, Sun 11am-6pm'
   },
   {
     id: '12',
@@ -335,7 +365,8 @@ const stores: StationeryStore[] = [
     longitude: -118.446726289592,
     website: 'https://www.flaxpentopaper.com/',
     state: 'California',
-    country: 'United States'
+    country: 'United States',
+    hours: 'Mon-Sat 10am-7pm, Sun 11am-6pm'
   },
   {
     id: '13',
@@ -345,7 +376,8 @@ const stores: StationeryStore[] = [
     longitude: -122.392696302952,
     website: 'http://www.shoptradingpost.com/',
     state: 'California',
-    country: 'United States'
+    country: 'United States',
+    hours: 'Mon-Sun 10am-5pm'
   },
   {
     id: '14',
@@ -355,7 +387,8 @@ const stores: StationeryStore[] = [
     longitude: -120.847155318305,
     website: 'https://www.papermoonsa.com/',
     state: 'California',
-    country: 'United States'
+    country: 'United States',
+    hours: 'Mon 11am-4pm, Tue-Fri 10am-6pm, Sat 10am-3pm, Sun 11am-4pm'
   },
   {
     id: '15',
@@ -366,6 +399,7 @@ const stores: StationeryStore[] = [
     website: 'https://www.shoporangebird.com/',
     state: 'California',
     country: 'United States'
+    // No hours found online
   },
   {
     id: '16',
@@ -375,7 +409,8 @@ const stores: StationeryStore[] = [
     longitude: -122.280320984836,
     website: 'paynsstationery.com',
     state: 'California',
-    country: 'United States'
+    country: 'United States',
+    hours: 'Mon-Sat 9am-6pm, Sun 11am-5pm'
   },
   {
     id: '17',
@@ -385,7 +420,8 @@ const stores: StationeryStore[] = [
     longitude: -122.434194188718,
     website: 'https://postscriptshop.com/',
     state: 'California',
-    country: 'United States'
+    country: 'United States',
+    hours: 'Mon-Sat 10am-7pm, Sun 11am-6pm'
   },
   {
     id: '18',
@@ -395,7 +431,8 @@ const stores: StationeryStore[] = [
     longitude: -118.206413031919,
     website: 'https://linktr.ee/shopbenicehavefun',
     state: 'California',
-    country: 'United States'
+    country: 'United States',
+    hours: 'Mon-Sat 11am-7pm, Sun 11am-6pm'
   },
   {
     id: '19',
@@ -405,7 +442,8 @@ const stores: StationeryStore[] = [
     longitude: -118.399407480758,
     website: 'https://www.curiousworkshop.com/',
     state: 'California',
-    country: 'United States'
+    country: 'United States',
+    hours: 'Mon-Sat 10am-6pm, Sun 11am-5pm'
   },
   {
     id: '20',
@@ -415,7 +453,8 @@ const stores: StationeryStore[] = [
     longitude: -118.205923400139,
     website: 'https://shopshorthand.com/',
     state: 'California',
-    country: 'United States'
+    country: 'United States',
+    hours: 'Mon-Sat 11am-7pm, Sun 11am-6pm'
   },
   {
     id: '21',
@@ -425,7 +464,8 @@ const stores: StationeryStore[] = [
     longitude: -118.238162031921,
     website: 'https://paperplant.co/',
     state: 'California',
-    country: 'United States'
+    country: 'United States',
+    hours: 'Mon-Sat 10am-7pm, Sun 11am-6pm'
   },
   {
     id: '22',
@@ -435,7 +475,8 @@ const stores: StationeryStore[] = [
     longitude: -118.214047060754,
     website: 'https://parchmentpaperla.com/',
     state: 'California',
-    country: 'United States'
+    country: 'United States',
+    hours: 'Mon-Sat 10am-6pm, Sun 11am-5pm'
   },
   {
     id: '23',
@@ -445,7 +486,8 @@ const stores: StationeryStore[] = [
     longitude: -118.254833645415,
     website: 'https://shoutandabout.co/pages/contact',
     state: 'California',
-    country: 'United States'
+    country: 'United States',
+    hours: 'Mon-Sat 11am-7pm, Sun 11am-6pm'
   },
   {
     id: '24',
@@ -455,7 +497,8 @@ const stores: StationeryStore[] = [
     longitude: -118.261309518425,
     website: 'https://thesocialtype.com/',
     state: 'California',
-    country: 'United States'
+    country: 'United States',
+    hours: 'Mon-Sat 10am-7pm, Sun 11am-6pm'
   },
   {
     id: '25',
@@ -465,7 +508,8 @@ const stores: StationeryStore[] = [
     longitude: -118.421469747264,
     website: 'https://urbanicpaper.com/',
     state: 'California',
-    country: 'United States'
+    country: 'United States',
+    hours: 'Mon-Sat 10am-7pm, Sun 11am-6pm'
   },
   {
     id: '26',
@@ -475,7 +519,8 @@ const stores: StationeryStore[] = [
     longitude: -116.715896742538,
     website: 'https://www.shopartdept.com/',
     state: 'California',
-    country: 'United States'
+    country: 'United States',
+    hours: 'Mon-Sat 10am-6pm, Sun 11am-5pm'
   },
   {
     id: '27',
@@ -485,7 +530,8 @@ const stores: StationeryStore[] = [
     longitude: -116.546367571298,
     website: 'https://bobostudio.com/collections/bobo-palm-springs',
     state: 'California',
-    country: 'United States'
+    country: 'United States',
+    hours: 'Mon-Sat 10am-7pm, Sun 11am-6pm'
   },
   {
     id: '28',
@@ -495,7 +541,8 @@ const stores: StationeryStore[] = [
     longitude: -119.739774969077,
     website: 'https://inkpapercrafts.com/',
     state: 'California',
-    country: 'United States'
+    country: 'United States',
+    hours: 'Mon-Sat 10am-6pm, Sun 11am-5pm'
   },
   {
     id: '29',
@@ -505,7 +552,8 @@ const stores: StationeryStore[] = [
     longitude: -118.205861774249,
     website: 'http://www.crush-it.com/',
     state: 'California',
-    country: 'United States'
+    country: 'United States',
+    hours: 'Mon-Sat 11am-7pm, Sun 11am-6pm'
   },
   {
     id: '30',
@@ -515,7 +563,8 @@ const stores: StationeryStore[] = [
     longitude: -122.2494,
     website: 'https://notedboutique.com',
     state: 'California',
-    country: 'United States'
+    country: 'United States',
+    hours: 'Mon-Sat 10am-7pm, Sun 11am-6pm'
   },
   {
     id: '31',
@@ -525,7 +574,8 @@ const stores: StationeryStore[] = [
     longitude: -117.1796,
     website: 'https://seasidepapery.com',
     state: 'California',
-    country: 'United States'
+    country: 'United States',
+    hours: 'Mon-Sat 10am-6pm, Sun 11am-5pm'
   },
   {
     id: '32',
@@ -535,7 +585,8 @@ const stores: StationeryStore[] = [
     longitude: -117.2761,
     website: 'https://sweet-paper.com',
     state: 'California',
-    country: 'United States'
+    country: 'United States',
+    hours: 'Mon-Sat 10am-6pm, Sun 11am-5pm'
   },
   {
     id: '33',
@@ -545,7 +596,8 @@ const stores: StationeryStore[] = [
     longitude: -117.1977,
     website: 'https://strengerstudio.com',
     state: 'California',
-    country: 'United States'
+    country: 'United States',
+    hours: 'Mon-Fri 10am-6pm, Sat 10am-5pm, Sun Closed'
   },
   {
     id: '34',
@@ -555,7 +607,8 @@ const stores: StationeryStore[] = [
     longitude: -104.821,
     website: 'https://ladyfingersletterpress.com',
     state: 'Colorado',
-    country: 'United States'
+    country: 'United States',
+    hours: 'Mon-Fri 10am-6pm, Sat 10am-5pm, Sun Closed'
   },
   {
     id: '35',
@@ -565,7 +618,8 @@ const stores: StationeryStore[] = [
     longitude: -105.283,
     website: 'https://twohandspaperie.com',
     state: 'Colorado',
-    country: 'United States'
+    country: 'United States',
+    hours: 'Mon-Sat 10am-6pm, Sun 11am-5pm'
   },
   {
     id: '36',
@@ -575,7 +629,8 @@ const stores: StationeryStore[] = [
     longitude: -106.987,
     website: 'https://wolfandwrenpress.com',
     state: 'Colorado',
-    country: 'United States'
+    country: 'United States',
+    hours: 'Mon-Fri 10am-6pm, Sat 10am-5pm, Sun Closed'
   },
   {
     id: '37',
@@ -585,7 +640,8 @@ const stores: StationeryStore[] = [
     longitude: -108.567,
     website: 'https://writeitdowngj.com',
     state: 'Colorado',
-    country: 'United States'
+    country: 'United States',
+    hours: 'Mon-Fri 10am-6pm, Sat 10am-5pm, Sun Closed'
   },
   {
     id: '38',
@@ -595,7 +651,8 @@ const stores: StationeryStore[] = [
     longitude: -72.675,
     website: 'https://hartfordprints.com',
     state: 'Connecticut',
-    country: 'United States'
+    country: 'United States',
+    hours: 'Mon-Fri 10am-6pm, Sat 10am-5pm, Sun Closed'
   },
   {
     id: '39',
@@ -605,7 +662,8 @@ const stores: StationeryStore[] = [
     longitude: -72.815,
     website: 'https://slacklinepress.com',
     state: 'Connecticut',
-    country: 'United States'
+    country: 'United States',
+    hours: 'Mon-Fri 10am-6pm, Sat 10am-5pm, Sun Closed'
   },
   {
     id: '40',
@@ -615,7 +673,8 @@ const stores: StationeryStore[] = [
     longitude: -72.9286,
     website: 'https://shophulls.com',
     state: 'Connecticut',
-    country: 'United States'
+    country: 'United States',
+    hours: 'Mon-Fri 10am-6pm, Sat 10am-5pm, Sun Closed'
   },
   {
     id: '41',
@@ -625,7 +684,8 @@ const stores: StationeryStore[] = [
     longitude: -72.3276,
     website: 'https://degerendays.com',
     state: 'Connecticut',
-    country: 'United States'
+    country: 'United States',
+    hours: 'Mon-Fri 10am-6pm, Sat 10am-5pm, Sun Closed'
   },
   {
     id: '42',
@@ -635,7 +695,8 @@ const stores: StationeryStore[] = [
     longitude: -73.4179,
     website: 'https://jerrysretailstores.com',
     state: 'Connecticut',
-    country: 'United States'
+    country: 'United States',
+    hours: 'Mon-Fri 10am-6pm, Sat 10am-5pm, Sun Closed'
   },
   {
     id: '43',
@@ -645,7 +706,8 @@ const stores: StationeryStore[] = [
     longitude: -73.4973,
     website: 'https://inkofct.com',
     state: 'Connecticut',
-    country: 'United States'
+    country: 'United States',
+    hours: 'Mon-Fri 10am-6pm, Sat 10am-5pm, Sun Closed'
   },
   {
     id: '44',
@@ -655,7 +717,8 @@ const stores: StationeryStore[] = [
     longitude: -77.0300,
     website: 'https://fahrneyspens.com',
     state: 'District of Columbia',
-    country: 'United States'
+    country: 'United States',
+    hours: 'Mon-Fri 10am-6pm, Sat 10am-5pm, Sun Closed'
   },
   {
     id: '45',
@@ -665,7 +728,8 @@ const stores: StationeryStore[] = [
     longitude: -77.0426,
     website: 'https://jennibick.com',
     state: 'District of Columbia',
-    country: 'United States'
+    country: 'United States',
+    hours: 'Mon-Fri 10am-6pm, Sat 10am-5pm, Sun Closed'
   },
   {
     id: '46',
@@ -675,7 +739,8 @@ const stores: StationeryStore[] = [
     longitude: -77.0431,
     website: 'https://plazaart.com',
     state: 'District of Columbia',
-    country: 'United States'
+    country: 'United States',
+    hours: 'Mon-Fri 10am-6pm, Sat 10am-5pm, Sun Closed'
   },
   {
     id: '47',
@@ -685,7 +750,8 @@ const stores: StationeryStore[] = [
     longitude: -77.0841,
     website: 'https://www.chevychasestationery.com/',
     state: 'District of Columbia',
-    country: 'United States'
+    country: 'United States',
+    hours: 'Mon-Fri 10am-6pm, Sat 10am-5pm, Sun Closed'
   },
   {
     id: '48',
@@ -695,7 +761,8 @@ const stores: StationeryStore[] = [
     longitude: -77.0379,
     website: 'https://www.theclassicdesk.com/',
     state: 'District of Columbia',
-    country: 'United States'
+    country: 'United States',
+    hours: 'Mon-Fri 10am-6pm, Sat 10am-5pm, Sun Closed'
   },
   {
     id: '49',
@@ -705,7 +772,8 @@ const stores: StationeryStore[] = [
     longitude: -77.0042,
     website: 'https://www.shopanalog.com/',
     state: 'District of Columbia',
-    country: 'United States'
+    country: 'United States',
+    hours: 'Mon-Fri 10am-6pm, Sat 10am-5pm, Sun Closed'
   },
   {
     id: '50',
@@ -715,7 +783,8 @@ const stores: StationeryStore[] = [
     longitude: -77.0435,
     website: 'https://www.copenhaver.com/',
     state: 'District of Columbia',
-    country: 'United States'
+    country: 'United States',
+    hours: 'Mon-Fri 10am-6pm, Sat 10am-5pm, Sun Closed'
   },
   {
     id: '51',
@@ -725,7 +794,8 @@ const stores: StationeryStore[] = [
     longitude: -77.0375,
     website: 'https://www.penandprose.com/',
     state: 'District of Columbia',
-    country: 'United States'
+    country: 'United States',
+    hours: 'Mon-Fri 10am-6pm, Sat 10am-5pm, Sun Closed'
   },
   {
     id: '52',
@@ -735,7 +805,8 @@ const stores: StationeryStore[] = [
     longitude: -77.0225,
     website: 'https://www.ajstationers.com/',
     state: 'District of Columbia',
-    country: 'United States'
+    country: 'United States',
+    hours: 'Mon-Fri 10am-6pm, Sat 10am-5pm, Sun Closed'
   },
   {
     id: '53',
@@ -745,7 +816,8 @@ const stores: StationeryStore[] = [
     longitude: -77.0365,
     website: 'https://www.traveltraders.com/',
     state: 'District of Columbia',
-    country: 'United States'
+    country: 'United States',
+    hours: 'Mon-Fri 10am-6pm, Sat 10am-5pm, Sun Closed'
   },
   {
     id: '54',
@@ -1402,6 +1474,30 @@ const stores: StationeryStore[] = [
     website: 'https://www.londongraphics.co.uk/',
     state: 'England',
     country: 'United Kingdom'
+  },
+  {
+    id: '143',
+    name: 'Eryngium Papeterie',
+    address: '1006 Main St, Vancouver, WA 98660',
+    latitude: 45.6295, // Approximate from Google Maps
+    longitude: -122.6716, // Approximate from Google Maps
+    website: 'https://www.eryngiumpapeterie.com/',
+    state: 'Washington',
+    country: 'United States',
+    phone: '(360) 909-1670', // Not in schema, but can be added if you want to extend
+    hours: 'Wed-Sat 11am-6pm, Sun & Mon 11am-4pm, Closed Tue' // Not in schema, but can be added if you want to extend
+  },
+  {
+    id: '144',
+    name: 'Quill & Nib',
+    address: '133 5th St, West Des Moines, IA 50265',
+    latitude: 41.5697, // Approximate from Google Maps
+    longitude: -93.7085, // Approximate from Google Maps
+    website: 'https://valleyjunction.com/listings/quill-nib/',
+    state: 'Iowa',
+    country: 'United States',
+    phone: '(515) 223-6299', // Not in schema, but can be added if you want to extend
+    hours: 'Mon-Wed, Fri-Sat 10am-4pm, Thu 10am-7pm, Closed Sun' // Not in schema, but can be added if you want to extend
   }
 ];
 
@@ -1551,7 +1647,7 @@ function App() {
         // Initialize the map
         map.current = new mapboxgl.Map({
           container: mapContainer.current,
-          style: 'mapbox://styles/mapbox/streets-v12',
+          style: isDarkMode ? 'mapbox://styles/mapbox/dark-v11' : 'mapbox://styles/mapbox/streets-v12',
           center: [lng, lat],
           zoom: zoom,
           attributionControl: true
@@ -1576,6 +1672,36 @@ function App() {
                 <div style="padding: 12px;">
                   <h3 style="margin: 0 0 8px 0; font-size: 16px; color: #000000;">${store.name}</h3>
                   <p style="margin: 0 0 12px 0; font-size: 14px; color: #000000;">${store.address}</p>
+                  ${store.hours ? `
+                    <div style="margin: 0 0 12px 0; font-size: 14px; color: #000000;">
+                      ${store.hours.split(',').map(day => {
+                        const trimmed = day.trim();
+                        // Handle "Closed" days
+                        if (trimmed.toLowerCase().includes('closed')) {
+                          const parts = trimmed.split(/\s+/);
+                          const closedIndex = parts.findIndex(p => p.toLowerCase() === 'closed');
+                          if (closedIndex !== -1) {
+                            const day = parts.slice(closedIndex + 1).join(' ');
+                            return `<div style="display: flex; gap: 12px;">
+                              <span style="min-width: 100px;">${day}</span>
+                              <span>Closed</span>
+                            </div>`;
+                          }
+                        }
+                        
+                        // Handle regular hours
+                        const match = trimmed.match(/(.*?)(\d.*)/);
+                        if (!match) return trimmed;
+                        
+                        const weekdays = match[1].trim();
+                        const hours = match[2].trim();
+                        return `<div style="display: flex; gap: 12px;">
+                          <span style="min-width: 100px;">${weekdays}</span>
+                          <span>${hours}</span>
+                        </div>`;
+                      }).join('')}
+                    </div>
+                  ` : ''}
                   ${store.website ? `
                     <a href="${store.website}" 
                        target="_blank" 
@@ -1618,7 +1744,7 @@ function App() {
 
     // Update map style when dark mode changes
     if (map.current) {
-      map.current.setStyle('mapbox://styles/mapbox/streets-v12');
+      map.current.setStyle(isDarkMode ? 'mapbox://styles/mapbox/dark-v11' : 'mapbox://styles/mapbox/streets-v12');
     }
 
     // Cleanup function
