@@ -189,6 +189,7 @@ function App() {
         // Handle map load
         map.current.on('load', () => {
           console.log('Map loaded successfully');
+          map.current?.resize();
           setMapError(null);
           
           // Clear existing markers
@@ -247,8 +248,9 @@ function App() {
       }
     }
 
-    // Update map style when dark mode changes
+    // Update map size and style when layout or dark mode changes
     if (map.current) {
+      map.current.resize();
       map.current.setStyle(isDarkMode ? 'mapbox://styles/mapbox/dark-v11' : 'mapbox://styles/mapbox/streets-v12');
     }
 
@@ -330,13 +332,15 @@ function App() {
 
   return (
     <div style={{ 
-      minHeight: '100vh', 
+      height: '100vh',
+      minHeight: '100vh',
       backgroundColor: colors.background,
       display: 'flex',
       flexDirection: 'column',
       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
       color: colors.text,
-      transition: 'background-color 0.3s ease'
+      transition: 'background-color 0.3s ease',
+      overflow: 'hidden'
     }}>
       <header style={{ 
         padding: '1rem',
@@ -506,15 +510,16 @@ function App() {
       </header>
 
       <main style={{ 
-        flex: 1,
+        flex: '1 1 auto',
+        minHeight: 0,
         padding: isMobile ? '0' : '1rem',
         maxWidth: '1200px',
         margin: '0 auto',
         width: '100%',
         display: 'flex',
         gap: '1rem',
-        height: isMobile ? 'calc(100vh - 80px)' : 'calc(100vh - 80px)',
-        position: 'relative'
+        position: 'relative',
+        overflow: 'hidden'
       }}>
         {/* Map always visible on mobile; list is overlay. On desktop, both visible. */}
         <div style={{
@@ -524,7 +529,8 @@ function App() {
           borderRadius: isMobile ? '0' : '10px',
           boxShadow: isMobile ? 'none' : `0 2px 8px ${colors.shadow}`,
           overflow: 'hidden',
-          height: '100%',
+          alignSelf: 'stretch',
+          minHeight: 0,
           width: '100%',
           transition: 'background-color 0.3s ease, box-shadow 0.3s ease'
         }}>
