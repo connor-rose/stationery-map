@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import StationeryIcon from './assets/Default.png';
@@ -6,43 +6,81 @@ import { stores } from './data/stores';
 import type { StationeryStore, CountryGroup, StateGroup } from './types/store';
 import { formatStoreHoursHtml } from './utils/formatStoreHours';
 
-// You'll need to replace this with your Mapbox access token
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN;
 mapboxgl.accessToken = MAPBOX_TOKEN;
 
-// iOS system colors
+const LAST_UPDATED = 'July 2026';
+const SOURCE_ID = 'stores';
+const SELECTED_SOURCE_ID = 'selected-store';
+const USER_LOCATION_SOURCE_ID = 'user-location';
+
 const lightColors = {
-  background: '#F2F2F7', // iOS system background
+  background: '#F4F1EC',
   card: '#FFFFFF',
-  text: '#000000',
-  secondaryText: '#6C6C70',
-  accent: '#007AFF', // iOS blue
-  border: '#C6C6C8',
-  shadow: 'rgba(0, 0, 0, 0.1)'
+  panel: 'rgba(255, 255, 255, 0.94)',
+  text: '#201A16',
+  secondaryText: '#71675F',
+  mutedText: '#91877E',
+  accent: '#D97706',
+  accentStrong: '#B45309',
+  accentSoft: '#FFF4E2',
+  border: '#DED7CE',
+  borderStrong: '#CDBFAF',
+  mapOverlay: 'rgba(255, 255, 255, 0.9)',
+  shadow: 'rgba(67, 45, 25, 0.14)'
 };
 
 const darkColors = {
-  background: '#000000',
-  card: '#1C1C1E',
-  text: '#FFFFFF',
-  secondaryText: '#8E8E93',
-  accent: '#0A84FF',
-  border: '#38383A',
-  shadow: 'rgba(0, 0, 0, 0.3)'
+  background: '#11100F',
+  card: '#1D1B19',
+  panel: 'rgba(29, 27, 25, 0.94)',
+  text: '#F8F3EA',
+  secondaryText: '#B8ADA1',
+  mutedText: '#8F8378',
+  accent: '#F59E0B',
+  accentStrong: '#FBBF24',
+  accentSoft: 'rgba(245, 158, 11, 0.16)',
+  border: '#3B342D',
+  borderStrong: '#584A3F',
+  mapOverlay: 'rgba(29, 27, 25, 0.9)',
+  shadow: 'rgba(0, 0, 0, 0.36)'
+};
+
+const slugify = (value: string) =>
+  value
+    .toLowerCase()
+    .replace(/&/g, 'and')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '');
+
+const storeSlug = (store: StationeryStore) => {
+  const base = slugify(store.name);
+  const duplicateNames = stores.filter(candidate => slugify(candidate.name) === base);
+  return duplicateNames.length > 1 ? `${base}-${store.id}` : base;
+};
+
+const storeMapsUrl = (store: StationeryStore) =>
+  `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${store.name} ${store.address}`)}`;
+
+const normalizeWebsite = (website?: string) => {
+  if (!website) return undefined;
+  return website.startsWith('http') ? website : `https://${website}`;
 };
 
 function App() {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
-  const markers = useRef<mapboxgl.Marker[]>([]);
   const [lng] = useState(-122.4194);
   const [lat] = useState(37.7749);
   const [zoom] = useState(12);
   const [mapError, setMapError] = useState<string | null>(null);
-  const [selectedStore, setSelectedStore] = useState<string | null>(null);
+  const [selectedStore, setSelectedStore] = useState<string | null>(() => {
+    const params = new URLSearchParams(window.location.search);
+    const storeParam = params.get('store');
+    if (!storeParam) return null;
+    return stores.find(store => storeSlug(store) === storeParam || store.id === storeParam)?.id ?? null;
+  });
   const [searchQuery, setSearchQuery] = useState('');
-  const searchInputRef = useRef<HTMLInputElement>(null);
-  const [isInputFocused, setIsInputFocused] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(() => {
     const saved = localStorage.getItem('darkMode');
     if (saved !== null) {
@@ -62,30 +100,31 @@ function App() {
         };
       }
     });
-    const firstCountry = Object.keys(groups)[0];
+    const firstCountry = Object.keys(groups).sort((a, b) => a.localeCompare(b))[0];
     return firstCountry ? { [firstCountry]: true } : {};
   });
   const [expandedStates, setExpandedStates] = useState<{ [key: string]: boolean }>({});
-  const [isMobile] = useState(() => {
-    const userAgent = navigator.userAgent.toLowerCase();
-    return /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(userAgent);
-  });
-  const [isListOpen, setIsListOpen] = useState(false);
+  const [isMobileListOpen, setIsMobileListOpen] = useState(false);
+  const [isSubmitOpen, setIsSubmitOpen] = useState(false);
+  const [locationError, setLocationError] = useState<string | null>(null);
+  const [isLocating, setIsLocating] = useState(false);
 
-  // Update colors based on mode
   const colors = isDarkMode ? darkColors : lightColors;
+  const selectedStoreData = useMemo(
+    () => stores.find(store => store.id === selectedStore) ?? null,
+    [selectedStore]
+  );
 
-  // Group stores by country and state
+  const isMobile = typeof window !== 'undefined' && window.matchMedia('(max-width: 760px)').matches;
+
   const groupedStores = useMemo<{ [key: string]: CountryGroup }>(() => {
     const groups: { [key: string]: CountryGroup } = {};
-    
-    // First sort all stores by name
     const sortedStores = [...stores].sort((a, b) => a.name.localeCompare(b.name));
-    
+
     sortedStores.forEach(store => {
       const country = store.country || 'United States';
       const state = store.state || 'Unknown';
-      
+
       if (!groups[country]) {
         groups[country] = {
           name: country,
@@ -93,7 +132,7 @@ function App() {
           states: {}
         };
       }
-      
+
       if (!groups[country].states[state]) {
         groups[country].states[state] = {
           name: state,
@@ -101,48 +140,53 @@ function App() {
           stores: []
         };
       }
-      
+
       groups[country].states[state].stores.push(store);
     });
-    
-    // Sort countries alphabetically
+
     const sortedGroups: { [key: string]: CountryGroup } = {};
     Object.keys(groups)
       .sort((a, b) => a.localeCompare(b))
       .forEach(country => {
-        // Sort states within each country
         const sortedStates: { [key: string]: StateGroup } = {};
         Object.keys(groups[country].states)
           .sort((a, b) => a.localeCompare(b))
           .forEach(state => {
-            // States are already sorted by store name from the initial sort
             sortedStates[state] = groups[country].states[state];
           });
-        
+
         sortedGroups[country] = {
           ...groups[country],
           states: sortedStates
         };
       });
-    
-    return sortedGroups;
-  }, [stores, expandedCountries, expandedStates]);
 
-  // Filter stores based on search query with proper typing
+    return sortedGroups;
+  }, [expandedCountries, expandedStates]);
+
   const filteredGroups = useMemo<{ [key: string]: CountryGroup }>(() => {
     if (!searchQuery) return groupedStores;
-    
+
     const filtered: { [key: string]: CountryGroup } = {};
-    
+    const normalizedQuery = searchQuery.toLowerCase();
+
     Object.entries(groupedStores).forEach(([countryName, country]) => {
       const filteredStates: { [key: string]: StateGroup } = {};
-      
+
       Object.entries(country.states).forEach(([stateName, state]) => {
-        const filteredStores = state.stores.filter(store => 
-          store.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          store.address.toLowerCase().includes(searchQuery.toLowerCase())
+        const filteredStores = state.stores.filter(store =>
+          [
+            store.name,
+            store.address,
+            store.state,
+            store.country,
+            store.website,
+            store.phone
+          ]
+            .filter(Boolean)
+            .some(value => value!.toLowerCase().includes(normalizedQuery))
         );
-        
+
         if (filteredStores.length > 0) {
           filteredStates[stateName] = {
             ...state,
@@ -150,7 +194,7 @@ function App() {
           };
         }
       });
-      
+
       if (Object.keys(filteredStates).length > 0) {
         filtered[countryName] = {
           ...country,
@@ -158,133 +202,313 @@ function App() {
         };
       }
     });
-    
+
     return filtered;
   }, [groupedStores, searchQuery]);
+
+  const visibleStores = useMemo(
+    () =>
+      Object.values(filteredGroups).flatMap(country =>
+        Object.values(country.states).flatMap(state => state.stores)
+      ),
+    [filteredGroups]
+  );
+
+  const storeFeatures = useMemo(
+    () => ({
+      type: 'FeatureCollection' as const,
+      features: visibleStores.map(store => ({
+        type: 'Feature' as const,
+        geometry: {
+          type: 'Point' as const,
+          coordinates: [store.longitude, store.latitude]
+        },
+        properties: {
+          id: store.id,
+          name: store.name,
+          address: store.address,
+          state: store.state,
+          country: store.country
+        }
+      }))
+    }),
+    [visibleStores]
+  );
+
+  const updateUrlForStore = useCallback((store: StationeryStore | null) => {
+    const url = new URL(window.location.href);
+    if (store) {
+      url.searchParams.set('store', storeSlug(store));
+    } else {
+      url.searchParams.delete('store');
+    }
+    window.history.replaceState({}, '', `${url.pathname}${url.search}${url.hash}`);
+  }, []);
+
+  const selectStore = useCallback(
+    (store: StationeryStore, shouldFly = true) => {
+      setSelectedStore(store.id);
+      updateUrlForStore(store);
+      if (shouldFly && map.current) {
+        map.current.flyTo({
+          center: [store.longitude, store.latitude],
+          zoom: Math.max(map.current.getZoom(), 14),
+          duration: 900
+        });
+      }
+      if (isMobile) {
+        setIsMobileListOpen(false);
+      }
+    },
+    [isMobile, updateUrlForStore]
+  );
+
+  const clearSelection = () => {
+    setSelectedStore(null);
+    updateUrlForStore(null);
+  };
+
+  const upsertSelectedStoreSource = useCallback(() => {
+    const currentMap = map.current;
+    if (!currentMap || !currentMap.isStyleLoaded()) return;
+
+    const selected = stores.find(store => store.id === selectedStore);
+    const data = {
+      type: 'FeatureCollection' as const,
+      features: selected
+        ? [
+            {
+              type: 'Feature' as const,
+              geometry: {
+                type: 'Point' as const,
+                coordinates: [selected.longitude, selected.latitude]
+              },
+              properties: { id: selected.id }
+            }
+          ]
+        : []
+    };
+
+    const source = currentMap.getSource(SELECTED_SOURCE_ID) as mapboxgl.GeoJSONSource | undefined;
+    if (source) {
+      source.setData(data);
+      return;
+    }
+
+    currentMap.addSource(SELECTED_SOURCE_ID, {
+      type: 'geojson',
+      data
+    });
+
+    currentMap.addLayer({
+      id: 'selected-store-halo',
+      type: 'circle',
+      source: SELECTED_SOURCE_ID,
+      paint: {
+        'circle-radius': 18,
+        'circle-color': colors.accent,
+        'circle-opacity': 0.2,
+        'circle-stroke-color': colors.accent,
+        'circle-stroke-width': 2
+      }
+    });
+  }, [colors.accent, selectedStore]);
+
+  const addStoreLayers = useCallback(() => {
+    const currentMap = map.current;
+    if (!currentMap || !currentMap.isStyleLoaded()) return;
+
+    if (!currentMap.getSource(SOURCE_ID)) {
+      currentMap.addSource(SOURCE_ID, {
+        type: 'geojson',
+        data: storeFeatures,
+        cluster: true,
+        clusterMaxZoom: 12,
+        clusterRadius: 48
+      });
+    }
+
+    if (!currentMap.getLayer('clusters')) {
+      currentMap.addLayer({
+        id: 'clusters',
+        type: 'circle',
+        source: SOURCE_ID,
+        filter: ['has', 'point_count'],
+        paint: {
+          'circle-color': [
+            'step',
+            ['get', 'point_count'],
+            colors.accent,
+            12,
+            colors.accentStrong,
+            40,
+            '#7C2D12'
+          ],
+          'circle-radius': ['step', ['get', 'point_count'], 18, 12, 24, 40, 32],
+          'circle-stroke-color': isDarkMode ? '#1D1B19' : '#FFFFFF',
+          'circle-stroke-width': 3
+        }
+      });
+    }
+
+    if (!currentMap.getLayer('cluster-count')) {
+      currentMap.addLayer({
+        id: 'cluster-count',
+        type: 'symbol',
+        source: SOURCE_ID,
+        filter: ['has', 'point_count'],
+        layout: {
+          'text-field': ['get', 'point_count_abbreviated'],
+          'text-font': ['DIN Offc Pro Medium', 'Arial Unicode MS Bold'],
+          'text-size': 12
+        },
+        paint: {
+          'text-color': '#FFFFFF'
+        }
+      });
+    }
+
+    if (!currentMap.getLayer('unclustered-point')) {
+      currentMap.addLayer({
+        id: 'unclustered-point',
+        type: 'circle',
+        source: SOURCE_ID,
+        filter: ['!', ['has', 'point_count']],
+        paint: {
+          'circle-color': colors.accent,
+          'circle-radius': 8,
+          'circle-stroke-color': isDarkMode ? '#1D1B19' : '#FFFFFF',
+          'circle-stroke-width': 2
+        }
+      });
+    }
+
+    if (!currentMap.getLayer('unclustered-point-inner')) {
+      currentMap.addLayer({
+        id: 'unclustered-point-inner',
+        type: 'circle',
+        source: SOURCE_ID,
+        filter: ['!', ['has', 'point_count']],
+        paint: {
+          'circle-color': '#FFFFFF',
+          'circle-radius': 2.5
+        }
+      });
+    }
+
+    upsertSelectedStoreSource();
+  }, [colors.accent, colors.accentStrong, isDarkMode, storeFeatures, upsertSelectedStoreSource]);
+
+  useEffect(() => {
+    const currentMap = map.current;
+    const source = currentMap?.getSource(SOURCE_ID) as mapboxgl.GeoJSONSource | undefined;
+    if (source) {
+      source.setData(storeFeatures);
+    }
+  }, [storeFeatures]);
+
+  useEffect(() => {
+    upsertSelectedStoreSource();
+  }, [upsertSelectedStoreSource]);
 
   useEffect(() => {
     if (!map.current && mapContainer.current) {
       try {
-        console.log('Initializing map with token:', MAPBOX_TOKEN);
-        
-        // Ensure the map container has dimensions
-        const container = mapContainer.current;
-        if (container.offsetHeight === 0) {
-          container.style.height = '100%';
-          container.style.width = '100%';
-        }
-        
-        // Initialize the map
         map.current = new mapboxgl.Map({
           container: mapContainer.current,
           style: isDarkMode ? 'mapbox://styles/mapbox/dark-v11' : 'mapbox://styles/mapbox/streets-v12',
           center: [lng, lat],
-          zoom: zoom,
+          zoom,
           attributionControl: true
         });
 
-        // Add navigation controls
         map.current.addControl(new mapboxgl.NavigationControl(), 'bottom-right');
 
-        // Handle map load
         map.current.on('load', () => {
-          console.log('Map loaded successfully');
           map.current?.resize();
+          addStoreLayers();
           setMapError(null);
-          
-          // Clear existing markers
-          markers.current.forEach(marker => marker.remove());
-          markers.current = [];
+        });
 
-          // Add markers for each store
-          stores.forEach(store => {
-            const popup = new mapboxgl.Popup({ offset: 25 })
-              .setHTML(`
-                <div style="padding: 12px;">
-                  <h3 style="margin: 0 0 8px 0; font-size: 16px; color: #000000;">${store.name}</h3>
-                  <p style="margin: 0 0 12px 0; font-size: 14px; color: #000000;">${store.address}</p>
-                  ${store.hours ? `
-                    <div style="margin: 0 0 12px 0; font-size: 14px; color: #000000;">
-                      ${formatStoreHoursHtml(store.hours)}
-                    </div>
-                  ` : ''}
-                  ${store.website ? `
-                    <a href="${store.website}" 
-                       target="_blank" 
-                       style="
-                         color: #FFFFFF;
-                         text-decoration: none;
-                         font-size: 14px;
-                         display: inline-block;
-                         background-color: #007AFF;
-                         padding: 8px 12px;
-                         border-radius: 6px;
-                       "
-                    >Visit Website</a>
-                  ` : ''}
-                </div>
-              `);
+        map.current.on('style.load', () => {
+          addStoreLayers();
+          map.current?.resize();
+        });
 
-            const marker = new mapboxgl.Marker({
-              color: '#FF9500'
-            })
-              .setLngLat([store.longitude, store.latitude])
-              .setPopup(popup)
-              .addTo(map.current!);
-
-            markers.current.push(marker);
+        map.current.on('click', 'clusters', event => {
+          const feature = event.features?.[0];
+          if (!feature) return;
+          const clusterId = feature.properties?.cluster_id;
+          const source = map.current?.getSource(SOURCE_ID) as mapboxgl.GeoJSONSource | undefined;
+          source?.getClusterExpansionZoom(clusterId, (error, expansionZoom) => {
+            if (error || expansionZoom == null || !feature.geometry || feature.geometry.type !== 'Point') return;
+            map.current?.easeTo({
+              center: feature.geometry.coordinates as [number, number],
+              zoom: expansionZoom,
+              duration: 500
+            });
           });
         });
 
-        // Handle map errors
-        map.current.on('error', (e) => {
-          console.error('Mapbox error:', e);
-          setMapError('Error loading map. Please try refreshing the page.');
+        map.current.on('click', 'unclustered-point', event => {
+          const storeId = event.features?.[0]?.properties?.id;
+          const store = stores.find(candidate => candidate.id === storeId);
+          if (store) {
+            selectStore(store, false);
+          }
         });
 
+        map.current.on('mouseenter', 'clusters', () => {
+          if (map.current) map.current.getCanvas().style.cursor = 'pointer';
+        });
+
+        map.current.on('mouseleave', 'clusters', () => {
+          if (map.current) map.current.getCanvas().style.cursor = '';
+        });
+
+        map.current.on('mouseenter', 'unclustered-point', () => {
+          if (map.current) map.current.getCanvas().style.cursor = 'pointer';
+        });
+
+        map.current.on('mouseleave', 'unclustered-point', () => {
+          if (map.current) map.current.getCanvas().style.cursor = '';
+        });
+
+        map.current.on('error', event => {
+          console.error('Mapbox error:', event);
+          setMapError('Error loading map. Please try refreshing the page.');
+        });
       } catch (error) {
         console.error('Error initializing map:', error);
         setMapError('Failed to initialize map. Please check your connection and try again.');
       }
     }
 
-    // Update map size and style when layout or dark mode changes
-    if (map.current) {
-      map.current.resize();
-      map.current.setStyle(isDarkMode ? 'mapbox://styles/mapbox/dark-v11' : 'mapbox://styles/mapbox/streets-v12');
-    }
-
-    // Cleanup function
     return () => {
       if (map.current) {
         map.current.remove();
         map.current = null;
       }
     };
-  }, [lng, lat, zoom, isDarkMode]);
+  }, [lat, lng, zoom]);
 
-  const handleStoreClick = (store: StationeryStore) => {
+  useEffect(() => {
     if (map.current) {
-      map.current.flyTo({
-        center: [store.longitude, store.latitude],
-        zoom: 15,
-        duration: 1000
-      });
-
-      const marker = markers.current.find(m => 
-        m.getLngLat().lng === store.longitude && 
-        m.getLngLat().lat === store.latitude
-      );
-      if (marker) {
-        marker.togglePopup();
-      }
-
-      setSelectedStore(store.id);
-      if (isMobile) {
-        setIsListOpen(false);
-      }
+      map.current.resize();
+      map.current.setStyle(isDarkMode ? 'mapbox://styles/mapbox/dark-v11' : 'mapbox://styles/mapbox/streets-v12');
     }
-  };
+    localStorage.setItem('darkMode', JSON.stringify(isDarkMode));
+  }, [isDarkMode]);
+
+  useEffect(() => {
+    if (selectedStoreData && map.current) {
+      map.current.flyTo({
+        center: [selectedStoreData.longitude, selectedStoreData.latitude],
+        zoom: Math.max(map.current.getZoom(), 13),
+        duration: 700
+      });
+    }
+  }, []);
 
   const handleCountryClick = (countryName: string) => {
     setExpandedCountries(prev => ({
@@ -300,781 +524,926 @@ function App() {
     }));
   };
 
-  // Force focus on mobile when list is open
-  useEffect(() => {
-    if (isMobile && isListOpen && !isInputFocused) {
-      const timer = setTimeout(() => {
-        if (searchInputRef.current) {
-          searchInputRef.current.focus();
-          setIsInputFocused(true);
+  const handleLocateMe = () => {
+    if (!navigator.geolocation) {
+      setLocationError('Location is not available in this browser.');
+      return;
+    }
+
+    setIsLocating(true);
+    setLocationError(null);
+    navigator.geolocation.getCurrentPosition(
+      position => {
+        const coordinates: [number, number] = [position.coords.longitude, position.coords.latitude];
+        const currentMap = map.current;
+        if (currentMap) {
+          const data = {
+            type: 'FeatureCollection' as const,
+            features: [
+              {
+                type: 'Feature' as const,
+                geometry: { type: 'Point' as const, coordinates },
+                properties: {}
+              }
+            ]
+          };
+          const source = currentMap.getSource(USER_LOCATION_SOURCE_ID) as mapboxgl.GeoJSONSource | undefined;
+          if (source) {
+            source.setData(data);
+          } else {
+            currentMap.addSource(USER_LOCATION_SOURCE_ID, { type: 'geojson', data });
+            currentMap.addLayer({
+              id: 'user-location',
+              type: 'circle',
+              source: USER_LOCATION_SOURCE_ID,
+              paint: {
+                'circle-radius': 8,
+                'circle-color': '#2563EB',
+                'circle-stroke-color': '#FFFFFF',
+                'circle-stroke-width': 3
+              }
+            });
+          }
+          currentMap.flyTo({ center: coordinates, zoom: 12, duration: 900 });
         }
-      }, 100);
-      return () => clearTimeout(timer);
-    }
-  }, [isMobile, isListOpen, isInputFocused]);
-
-  // Handle focus management
-  const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (searchInputRef.current) {
-      searchInputRef.current.focus();
-    }
+        setIsLocating(false);
+      },
+      () => {
+        setLocationError('Location permission was not granted.');
+        setIsLocating(false);
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
   };
 
-  // Handle input changes
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchQuery(e.target.value);
-    if (searchInputRef.current) {
-      searchInputRef.current.focus();
-    }
+  const renderSearch = (autoFocus = false) => (
+    <div style={{ position: 'relative' }}>
+      <input
+        autoFocus={autoFocus}
+        type="text"
+        placeholder="Search stores, cities, countries..."
+        value={searchQuery}
+        onChange={event => setSearchQuery(event.target.value)}
+        style={{
+          width: '100%',
+          padding: '11px 12px',
+          paddingLeft: '36px',
+          borderRadius: '8px',
+          border: `1px solid ${colors.border}`,
+          backgroundColor: isDarkMode ? '#11100F' : '#FBFAF7',
+          color: colors.text,
+          fontSize: '14px',
+          outline: 'none',
+          boxSizing: 'border-box'
+        }}
+      />
+      <svg
+        width="16"
+        height="16"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke={colors.secondaryText}
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        style={{
+          position: 'absolute',
+          left: '12px',
+          top: '50%',
+          transform: 'translateY(-50%)',
+          pointerEvents: 'none'
+        }}
+      >
+        <circle cx="11" cy="11" r="8" />
+        <line x1="21" y1="21" x2="16.65" y2="16.65" />
+      </svg>
+    </div>
+  );
+
+  const renderStoreList = (compact = false) => (
+    <div
+      style={{
+        flex: 1,
+        overflowY: 'auto',
+        minHeight: 0,
+        padding: compact ? '8px 12px 96px' : '8px 10px 16px'
+      }}
+    >
+      {Object.entries(filteredGroups).map(([countryName, country]) => {
+        const countryCount = Object.values(country.states).reduce((acc, state) => acc + state.stores.length, 0);
+        return (
+          <div key={countryName} style={{ marginBottom: '10px' }}>
+            <button
+              onClick={() => handleCountryClick(countryName)}
+              style={{
+                width: '100%',
+                padding: '10px 12px',
+                backgroundColor: expandedCountries[countryName] ? colors.accentSoft : 'transparent',
+                border: `1px solid ${expandedCountries[countryName] ? colors.borderStrong : 'transparent'}`,
+                borderRadius: '8px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                cursor: 'pointer',
+                color: colors.text,
+                boxSizing: 'border-box'
+              }}
+            >
+              <span style={{ display: 'flex', alignItems: 'center', minWidth: 0, gap: '9px' }}>
+                <span
+                  style={{
+                    width: '6px',
+                    height: '22px',
+                    borderRadius: '999px',
+                    backgroundColor: expandedCountries[countryName] ? colors.accent : colors.borderStrong,
+                    flexShrink: 0
+                  }}
+                />
+                <span
+                  style={{
+                    fontSize: '15px',
+                    fontWeight: 700,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap'
+                  }}
+                >
+                  {countryName}
+                </span>
+                <span
+                  style={{
+                    fontSize: '12px',
+                    fontWeight: 700,
+                    color: colors.secondaryText,
+                    backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.08)' : 'rgba(32, 26, 22, 0.07)',
+                    padding: '2px 7px',
+                    borderRadius: '999px'
+                  }}
+                >
+                  {countryCount}
+                </span>
+              </span>
+              <Chevron expanded={!!expandedCountries[countryName]} color={colors.secondaryText} size={16} />
+            </button>
+
+            {expandedCountries[countryName] &&
+              Object.entries(country.states).map(([stateName, state]) => (
+                <div key={stateName} style={{ marginLeft: '16px', marginTop: '8px' }}>
+                  <button
+                    onClick={() => handleStateClick(stateName)}
+                    style={{
+                      width: '100%',
+                      padding: '8px 10px',
+                      backgroundColor: expandedStates[stateName] ? (isDarkMode ? 'rgba(255,255,255,0.06)' : '#FBFAF7') : 'transparent',
+                      border: 'none',
+                      borderRadius: '8px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      cursor: 'pointer',
+                      color: colors.text,
+                      boxSizing: 'border-box'
+                    }}
+                  >
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+                      <span
+                        style={{
+                          fontSize: '13px',
+                          fontWeight: 700,
+                          color: colors.secondaryText,
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap'
+                        }}
+                      >
+                        {stateName}
+                      </span>
+                      <span
+                        style={{
+                          fontSize: '11px',
+                          fontWeight: 700,
+                          color: colors.mutedText
+                        }}
+                      >
+                        {state.stores.length}
+                      </span>
+                    </span>
+                    <Chevron expanded={!!expandedStates[stateName]} color={colors.mutedText} size={14} />
+                  </button>
+
+                  {expandedStates[stateName] && (
+                    <div style={{ marginTop: '6px' }}>
+                      {state.stores.map(store => {
+                        const isSelected = selectedStore === store.id;
+                        return (
+                          <button
+                            key={store.id}
+                            onClick={() => selectStore(store)}
+                            style={{
+                              width: '100%',
+                              padding: '11px 12px',
+                              marginBottom: '6px',
+                              backgroundColor: isSelected ? colors.accent : 'transparent',
+                              border: `1px solid ${isSelected ? colors.accent : colors.border}`,
+                              borderRadius: '8px',
+                              textAlign: 'left',
+                              cursor: 'pointer',
+                              color: isSelected ? '#FFFFFF' : colors.text,
+                              boxSizing: 'border-box'
+                            }}
+                          >
+                            <div
+                              style={{
+                                fontSize: '14px',
+                                fontWeight: 700,
+                                marginBottom: '4px',
+                                lineHeight: 1.25
+                              }}
+                            >
+                              {store.name}
+                            </div>
+                            <div
+                              style={{
+                                fontSize: '12px',
+                                lineHeight: 1.35,
+                                color: isSelected ? 'rgba(255, 255, 255, 0.82)' : colors.secondaryText
+                              }}
+                            >
+                              {store.address}
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              ))}
+          </div>
+        );
+      })}
+    </div>
+  );
+
+  const renderSelectedStorePanel = () => {
+    if (!selectedStoreData) return null;
+    const website = normalizeWebsite(selectedStoreData.website);
+
+    return (
+      <div
+        style={{
+          position: 'absolute',
+          left: isMobile ? '12px' : '50%',
+          right: isMobile ? '12px' : 'auto',
+          top: isMobile ? 'auto' : '50%',
+          bottom: isMobile ? (isMobileListOpen ? 'calc(72vh + 12px)' : '18px') : 'auto',
+          width: isMobile ? 'auto' : 'min(380px, calc(100% - 32px))',
+          transform: isMobile ? 'none' : 'translate(-50%, -50%)',
+          backgroundColor: colors.panel,
+          border: `1px solid ${colors.border}`,
+          borderRadius: '8px',
+          boxShadow: `0 18px 40px ${colors.shadow}`,
+          padding: '16px',
+          zIndex: 7,
+          backdropFilter: 'blur(16px)'
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '12px' }}>
+          <div>
+            <div
+              style={{
+                color: colors.accent,
+                fontSize: '12px',
+                fontWeight: 800,
+                letterSpacing: '0.04em',
+                textTransform: 'uppercase',
+                marginBottom: '6px'
+              }}
+            >
+              Selected Store
+            </div>
+            <h2 style={{ margin: 0, color: colors.text, fontSize: '20px', lineHeight: 1.15 }}>
+              {selectedStoreData.name}
+            </h2>
+          </div>
+          <button
+            onClick={clearSelection}
+            aria-label="Close selected store"
+            style={{
+              border: 'none',
+              backgroundColor: 'transparent',
+              color: colors.secondaryText,
+              padding: '4px',
+              cursor: 'pointer'
+            }}
+          >
+            <CloseIcon />
+          </button>
+        </div>
+        <p style={{ color: colors.secondaryText, fontSize: '14px', lineHeight: 1.45, margin: '12px 0' }}>
+          {selectedStoreData.address}
+        </p>
+        {selectedStoreData.phone && (
+          <p style={{ color: colors.secondaryText, fontSize: '14px', margin: '0 0 12px' }}>
+            {selectedStoreData.phone}
+          </p>
+        )}
+        {selectedStoreData.hours && (
+          <div
+            style={{
+              color: colors.secondaryText,
+              fontSize: '13px',
+              lineHeight: 1.45,
+              marginBottom: '14px'
+            }}
+            dangerouslySetInnerHTML={{ __html: formatStoreHoursHtml(selectedStoreData.hours) }}
+          />
+        )}
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          <a
+            href={storeMapsUrl(selectedStoreData)}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={actionLinkStyle(colors.accent, '#FFFFFF')}
+          >
+            Open in Maps
+          </a>
+          {website && (
+            <a
+              href={website}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={actionLinkStyle(isDarkMode ? '#2A2622' : '#FFFFFF', colors.text, colors.border)}
+            >
+              Website
+            </a>
+          )}
+        </div>
+      </div>
+    );
   };
+
+  const renderFloatingStorePanel = () => (
+    <div
+      style={{
+        position: isMobile ? 'fixed' : 'absolute',
+        top: isMobile ? 'auto' : '14px',
+        right: isMobile ? 0 : '14px',
+        bottom: isMobile ? 0 : '14px',
+        width: isMobile ? '100%' : '386px',
+        height: isMobile ? '72vh' : 'auto',
+        transform: isMobile && !isMobileListOpen ? 'translateY(calc(100% + 18px))' : 'translateY(0)',
+        transition: isMobile ? 'transform 0.24s ease' : undefined,
+        zIndex: isMobile ? 30 : 6,
+        display: 'flex',
+        pointerEvents: 'auto'
+      }}
+    >
+      <section
+        style={{
+          width: '100%',
+          height: '100%',
+          background: glassBackground(colors, isDarkMode),
+          border: `1px solid ${colors.border}`,
+          borderRadius: isMobile ? '14px 14px 0 0' : '10px',
+          boxShadow: isMobile ? `0 -18px 42px ${colors.shadow}` : `0 18px 48px ${colors.shadow}`,
+          overflow: 'hidden',
+          display: 'flex',
+          flexDirection: 'column',
+          minHeight: 0,
+          backdropFilter: 'blur(24px) saturate(1.45)',
+          WebkitBackdropFilter: 'blur(24px) saturate(1.45)'
+        }}
+      >
+        <div
+          style={{
+            color: colors.text,
+            padding: isMobile ? '10px 14px 8px' : '14px 16px',
+            borderBottom: `1px solid ${colors.border}`
+          }}
+        >
+          <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <strong style={{ fontSize: '18px' }}>Stores</strong>
+            </span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <span style={{ color: colors.secondaryText, fontSize: '13px', fontWeight: 700 }}>
+                {visibleStores.length} visible
+              </span>
+              {isMobile && (
+                <button
+                  onClick={() => setIsMobileListOpen(false)}
+                  aria-label="Close stores"
+                  style={{
+                    border: 'none',
+                    backgroundColor: 'transparent',
+                    color: colors.secondaryText,
+                    padding: '4px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <CloseIcon />
+                </button>
+              )}
+            </span>
+          </span>
+        </div>
+
+        <div style={{ padding: isMobile ? '0 14px 12px' : '14px 16px 12px' }}>{renderSearch(false)}</div>
+        {renderStoreList(isMobile)}
+      </section>
+    </div>
+  );
 
   return (
-    <div style={{ 
-      height: '100vh',
-      minHeight: '100vh',
-      backgroundColor: colors.background,
-      display: 'flex',
-      flexDirection: 'column',
-      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-      color: colors.text,
-      transition: 'background-color 0.3s ease',
-      overflow: 'hidden'
-    }}>
-      <header style={{ 
-        padding: '1rem',
-        backgroundColor: colors.card,
-        borderBottom: `1px solid ${colors.border}`,
-        position: 'sticky',
-        top: 0,
-        zIndex: 100,
-        backdropFilter: 'blur(10px)',
-        WebkitBackdropFilter: 'blur(10px)',
-        transition: 'background-color 0.3s ease, border-color 0.3s ease'
-      }}>
-        <div style={{ 
-          maxWidth: '1200px',
-          margin: '0 auto',
-          width: '100%',
-          padding: '0 1rem',
-          display: 'flex',
-          flexDirection: isMobile ? 'column' : 'row',
-          justifyContent: 'space-between',
-          alignItems: isMobile ? 'flex-start' : 'center',
-          gap: isMobile ? '12px' : '0'
-        }}>
-          <div style={{
-            flex: 1,
+    <div
+      style={{
+        height: '100vh',
+        minHeight: '100vh',
+        backgroundColor: colors.background,
+        display: 'flex',
+        flexDirection: 'column',
+        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+        color: colors.text,
+        overflow: 'hidden'
+      }}
+    >
+      <header
+        style={{
+          padding: isMobile ? '12px' : '12px 18px',
+          backgroundColor: colors.panel,
+          borderBottom: `1px solid ${colors.border}`,
+          zIndex: 20,
+          backdropFilter: 'blur(16px)'
+        }}
+      >
+        <div
+          style={{
+            width: '100%',
             display: 'flex',
-            alignItems: 'center'
-          }}>
+            alignItems: isMobile ? 'flex-start' : 'center',
+            justifyContent: 'space-between',
+            gap: '12px',
+            flexDirection: isMobile ? 'column' : 'row'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0 }}>
             <img
               src={StationeryIcon}
-              alt="Stationery Icon"
+              alt="Stationery Store Map"
               style={{
-                width: 48,
-                height: 48,
-                borderRadius: 12,
-                marginRight: 16,
+                width: 46,
+                height: 46,
+                borderRadius: 10,
                 background: 'white',
                 boxShadow: `0 2px 8px ${colors.shadow}`
               }}
             />
-            <div>
-              <h1 style={{ 
-                fontSize: '24px',
-                fontWeight: '700',
-                color: colors.text,
-                margin: 0,
-                textAlign: 'left',
-                whiteSpace: 'nowrap'
-              }}>Stationery Store Map</h1>
-              <p style={{
-                fontSize: '15px',
-                color: colors.secondaryText,
-                margin: '4px 0 0 0',
-                textAlign: 'left'
-              }}>
-                Powered by{' '}
-                <a 
-                  href="https://www.penedex.com" 
-                  target="_blank" 
+            <div style={{ minWidth: 0 }}>
+              <h1
+                style={{
+                  fontSize: isMobile ? '21px' : '24px',
+                  fontWeight: 800,
+                  color: colors.text,
+                  margin: 0,
+                  whiteSpace: 'nowrap'
+                }}
+              >
+                Stationery Store Map
+              </h1>
+              <p style={{ fontSize: '13px', color: colors.secondaryText, margin: '3px 0 0' }}>
+                {stores.length} shops · Last updated {LAST_UPDATED} · Powered by{' '}
+                <a
+                  href="https://www.penedex.com"
+                  target="_blank"
                   rel="noopener noreferrer"
-                  style={{
-                    color: '#FF9500',
-                    textDecoration: 'none',
-                    fontWeight: '600'
-                  }}
+                  style={{ color: colors.accent, textDecoration: 'none', fontWeight: 800 }}
                 >
                   Penedex
                 </a>
               </p>
             </div>
           </div>
-          <div style={{
-            width: isMobile ? '100%' : '400px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: isMobile ? 'space-between' : 'flex-end',
-            gap: '12px',
-            position: 'relative',
-            marginLeft: isMobile ? '0' : 'auto',
-            marginRight: isMobile ? '0' : 'auto'
-          }}>
-            <div style={{
-              display: 'flex',
-              gap: '12px',
-              flex: 1,
-              justifyContent: isMobile ? 'center' : 'flex-end'
-            }}>
-              {isMobile && (
-                <button
-                  onClick={() => setIsListOpen(true)}
-                  style={{
-                    backgroundColor: 'transparent',
-                    border: 'none',
-                    color: colors.text,
-                    fontSize: '15px',
-                    fontWeight: '500',
-                    padding: '8px 12px',
-                    borderRadius: '8px',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease',
-                    whiteSpace: 'nowrap',
-                    flex: 1,
-                    textAlign: 'center'
-                  }}
-                >
-                  Show List
-                </button>
-              )}
-              <button
-                onClick={() => window.location.href = 'mailto:hello@penedex.com?subject=New Stationery Store Submission'}
-                style={{
-                  backgroundColor: 'transparent',
-                  border: 'none',
-                  color: colors.text,
-                  fontSize: '15px',
-                  fontWeight: '500',
-                  padding: '8px 12px',
-                  borderRadius: '8px',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease',
-                  whiteSpace: 'nowrap',
-                  flex: isMobile ? 1 : 'none',
-                  textAlign: 'center'
-                }}
-              >
-                Submit Store Info
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', width: isMobile ? '100%' : 'auto' }}>
+            {isMobile && !isMobileListOpen && (
+              <button onClick={() => setIsMobileListOpen(true)} style={headerButtonStyle(colors)}>
+                Show Stores
               </button>
-            </div>
+            )}
+            <button onClick={() => setIsSubmitOpen(true)} style={headerButtonStyle(colors)}>
+              Submit Store
+            </button>
             <button
               onClick={() => setIsDarkMode(!isDarkMode)}
+              aria-label="Toggle color mode"
               style={{
-                backgroundColor: 'transparent',
-                border: 'none',
-                color: colors.text,
-                width: '32px',
-                height: '32px',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                transition: 'all 0.2s ease',
-                padding: 0,
-                marginLeft: '24px'
+                ...iconButtonStyle(colors),
+                marginLeft: isMobile ? 'auto' : 0
               }}
             >
-              {isDarkMode ? (
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="12" r="5"/>
-                  <line x1="12" y1="1" x2="12" y2="3"/>
-                  <line x1="12" y1="21" x2="12" y2="23"/>
-                  <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
-                  <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
-                  <line x1="1" y1="12" x2="3" y2="12"/>
-                  <line x1="21" y1="12" x2="23" y2="12"/>
-                  <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
-                  <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
-                </svg>
-              ) : (
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
-                </svg>
-              )}
+              {isDarkMode ? <SunIcon /> : <MoonIcon />}
             </button>
           </div>
         </div>
       </header>
 
-      <main style={{ 
-        flex: '1 1 auto',
-        minHeight: 0,
-        padding: isMobile ? '0' : '1rem',
-        maxWidth: '1200px',
-        margin: '0 auto',
-        width: '100%',
-        display: 'flex',
-        gap: '1rem',
-        position: 'relative',
-        overflow: 'hidden'
-      }}>
-        {/* Map always visible on mobile; list is overlay. On desktop, both visible. */}
-        <div style={{
-          flex: 1.5,
-          position: 'relative',
-          backgroundColor: colors.card,
-          borderRadius: isMobile ? '0' : '10px',
-          boxShadow: isMobile ? 'none' : `0 2px 8px ${colors.shadow}`,
-          overflow: 'hidden',
-          alignSelf: 'stretch',
+      <main
+        style={{
+          flex: '1 1 auto',
           minHeight: 0,
+          padding: isMobile ? 0 : '14px',
           width: '100%',
-          transition: 'background-color 0.3s ease, box-shadow 0.3s ease'
-        }}>
+          display: 'flex',
+          gap: '14px',
+          position: 'relative',
+          overflow: 'hidden',
+          boxSizing: 'border-box'
+        }}
+      >
+        <div
+          style={{
+            flex: '1 1 auto',
+            position: 'relative',
+            backgroundColor: colors.card,
+            borderRadius: isMobile ? 0 : '8px',
+            boxShadow: isMobile ? 'none' : `0 2px 14px ${colors.shadow}`,
+            overflow: 'hidden',
+            minHeight: 0,
+            width: '100%'
+          }}
+        >
           {mapError ? (
-            <div style={{ 
-              backgroundColor: colors.card,
-              border: `1px solid ${colors.border}`,
-              color: '#FF3B30',
-              padding: '1rem',
-              borderRadius: '10px',
-              fontSize: '15px'
-            }}>
+            <div
+              style={{
+                backgroundColor: colors.card,
+                border: `1px solid ${colors.border}`,
+                color: '#EF4444',
+                padding: '1rem',
+                borderRadius: '8px',
+                fontSize: '15px'
+              }}
+            >
               <strong>Error: </strong>
               <span>{mapError}</span>
             </div>
           ) : (
-            <div 
-              ref={mapContainer} 
-              style={{ 
+            <div
+              ref={mapContainer}
+              style={{
                 position: 'absolute',
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
+                inset: 0,
                 width: '100%',
-                height: '100%',
-                minHeight: '300px'
-              }} 
+                height: '100%'
+              }}
             />
           )}
-        </div>
 
-        {/* Mobile List Overlay */}
-        {isMobile && isListOpen && (
-          <div style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: colors.background,
-            zIndex: 1000,
-            display: 'flex',
-            flexDirection: 'column'
-          }}>
-            <div style={{
-              padding: '1rem',
-              borderBottom: `1px solid ${colors.border}`,
-              backgroundColor: colors.card,
+          <div
+            style={{
+              position: 'absolute',
+              top: '14px',
+              left: '14px',
               display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center'
-            }}>
-              <h2 style={{
-                fontSize: '17px',
-                fontWeight: '600',
-                margin: 0,
-                color: colors.text
-              }}>Stores</h2>
-              <button
-                onClick={() => setIsListOpen(false)}
+              flexDirection: 'column',
+              gap: '8px',
+              zIndex: 4
+            }}
+          >
+            <button onClick={handleLocateMe} style={mapControlStyle(colors)} disabled={isLocating}>
+              <LocateIcon />
+              <span>{isLocating ? 'Locating...' : 'Locate me'}</span>
+            </button>
+            {locationError && (
+              <div
                 style={{
-                  backgroundColor: 'transparent',
-                  border: 'none',
-                  color: colors.text,
-                  padding: '8px',
-                  cursor: 'pointer'
+                  maxWidth: '230px',
+                  backgroundColor: colors.mapOverlay,
+                  color: '#EF4444',
+                  border: `1px solid ${colors.border}`,
+                  borderRadius: '8px',
+                  padding: '8px 10px',
+                  fontSize: '12px',
+                  boxShadow: `0 8px 22px ${colors.shadow}`
                 }}
               >
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <line x1="18" y1="6" x2="6" y2="18"></line>
-                  <line x1="6" y1="6" x2="18" y2="18"></line>
-                </svg>
-              </button>
-            </div>
-            <div style={{
-              padding: '1rem',
-              borderBottom: `1px solid ${colors.border}`,
-              backgroundColor: colors.card
-            }}>
-              <div style={{ position: 'relative' }}>
-                <input
-                  ref={searchInputRef}
-                  type="text"
-                  placeholder="Search stores..."
-                  value={searchQuery}
-                  onChange={handleInputChange}
-                  onBlur={handleBlur}
-                  style={{
-                    width: '100%',
-                    padding: '8px 12px',
-                    paddingLeft: '32px',
-                    borderRadius: '8px',
-                    border: `1px solid ${colors.border}`,
-                    backgroundColor: colors.background,
-                    color: colors.text,
-                    fontSize: '15px',
-                    outline: 'none',
-                    transition: 'border-color 0.2s ease'
-                  }}
-                />
-                <svg
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke={colors.secondaryText}
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  style={{
-                    position: 'absolute',
-                    left: '10px',
-                    top: '50%',
-                    transform: 'translateY(-50%)',
-                    pointerEvents: 'none'
-                  }}
-                >
-                  <circle cx="11" cy="11" r="8"/>
-                  <line x1="21" y1="21" x2="16.65" y2="16.65"/>
-                </svg>
+                {locationError}
               </div>
-            </div>
-            <div style={{
-              flex: 1,
-              overflowY: 'auto',
-              padding: '0.5rem',
-              backgroundColor: colors.background
-            }}>
-              {Object.entries(filteredGroups).map(([countryName, country]) => (
-                <div key={countryName} style={{ marginBottom: '16px' }}>
-                  <button
-                    onClick={() => handleCountryClick(countryName)}
-                    style={{
-                      width: '100%',
-                      padding: '8px 12px',
-                      backgroundColor: 'transparent',
-                      border: 'none',
-                      borderRadius: '8px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      cursor: 'pointer',
-                      color: colors.text,
-                      transition: 'background-color 0.2s ease',
-                    }}
-                    onMouseOver={e => {
-                      e.currentTarget.style.backgroundColor = isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)';
-                    }}
-                    onMouseOut={e => {
-                      e.currentTarget.style.backgroundColor = 'transparent';
-                    }}
-                  >
-                    <h3 style={{
-                      fontSize: '17px',
-                      fontWeight: '600',
-                      margin: 0,
-                      color: colors.text,
-                      textAlign: 'left',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px'
-                    }}>
-                      {countryName}
-                      <span style={{
-                        fontSize: '13px',
-                        fontWeight: '500',
-                        color: colors.secondaryText,
-                        backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)',
-                        padding: '2px 6px',
-                        borderRadius: '12px'
-                      }}>
-                        {Object.values(country.states).reduce((acc, state) => acc + state.stores.length, 0)}
-                      </span>
-                    </h3>
-                    <svg
-                      width="16"
-                      height="16"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke={colors.text}
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      style={{
-                        transform: expandedCountries[countryName] ? 'rotate(90deg)' : 'rotate(0deg)',
-                        transition: 'transform 0.2s ease'
-                      }}
-                    >
-                      <polyline points="9 18 15 12 9 6" />
-                    </svg>
-                  </button>
-                  {expandedCountries[countryName] && Object.entries(country.states).map(([stateName, state]) => (
-                    <div key={stateName} style={{ marginLeft: '12px', marginTop: '8px' }}>
-                      <button
-                        onClick={() => handleStateClick(stateName)}
-                        style={{
-                          width: '100%',
-                          padding: '6px 12px',
-                          backgroundColor: 'transparent',
-                          border: 'none',
-                          borderRadius: '8px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          cursor: 'pointer',
-                          color: colors.text,
-                          transition: 'background-color 0.2s ease',
-                        }}
-                        onMouseOver={e => {
-                          e.currentTarget.style.backgroundColor = isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)';
-                        }}
-                        onMouseOut={e => {
-                          e.currentTarget.style.backgroundColor = 'transparent';
-                        }}
-                      >
-                        <h4 style={{
-                          fontSize: '15px',
-                          fontWeight: '500',
-                          margin: 0,
-                          color: colors.text,
-                          textAlign: 'left',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '8px'
-                        }}>
-                          {stateName}
-                          <span style={{
-                            fontSize: '12px',
-                            fontWeight: '500',
-                            color: colors.secondaryText,
-                            backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)',
-                            padding: '1px 5px',
-                            borderRadius: '10px'
-                          }}>
-                            {state.stores.length}
-                          </span>
-                        </h4>
-                        <svg
-                          width="14"
-                          height="14"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke={colors.text}
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          style={{
-                            transform: expandedStates[stateName] ? 'rotate(90deg)' : 'rotate(0deg)',
-                            transition: 'transform 0.2s ease'
-                          }}
-                        >
-                          <polyline points="9 18 15 12 9 6" />
-                        </svg>
-                      </button>
-                      {expandedStates[stateName] && (
-                        <div style={{ marginLeft: '12px', marginTop: '4px' }}>
-                          {state.stores.map(store => (
-                            <button
-                              key={store.id}
-                              onClick={() => handleStoreClick(store)}
-                              style={{
-                                width: '100%',
-                                padding: '12px',
-                                marginBottom: '8px',
-                                backgroundColor: selectedStore === store.id ? '#FF9500' : 'transparent',
-                                border: 'none',
-                                borderRadius: '8px',
-                                textAlign: 'left',
-                                cursor: 'pointer',
-                                transition: 'background-color 0.2s ease',
-                                color: selectedStore === store.id ? '#FFFFFF' : colors.text
-                              }}
-                            >
-                              <div style={{
-                                fontSize: '15px',
-                                fontWeight: '600',
-                                marginBottom: '4px'
-                              }}>
-                                {store.name}
-                              </div>
-                              <div style={{
-                                fontSize: '13px',
-                                color: selectedStore === store.id ? 'rgba(255, 255, 255, 0.8)' : colors.secondaryText
-                              }}>
-                                {store.address}
-                              </div>
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              ))}
-            </div>
+            )}
           </div>
-        )}
 
-        {/* Desktop: list always visible. Mobile: list is overlay. */}
-        {!isMobile && (
-          <div style={{
-            width: '280px',
-            backgroundColor: colors.card,
-            borderRadius: '10px',
-            boxShadow: `0 2px 8px ${colors.shadow}`,
-            overflow: 'hidden',
-            display: 'flex',
-            flexDirection: 'column',
-            transition: 'background-color 0.3s ease, box-shadow 0.3s ease',
-            height: '100%'
-          }}>
-            {/* --- List UI from above --- */}
-            <div style={{
-              padding: '1rem',
-              borderBottom: `1px solid ${colors.border}`,
-              backgroundColor: colors.card,
-              flexShrink: 0
-            }}>
-              <h2 style={{
-                fontSize: '17px',
-                fontWeight: '600',
-                margin: '0 0 12px 0',
-                color: colors.text
-              }}>Stores</h2>
-              <div style={{ position: 'relative' }}>
-                <input
-                  type="text"
-                  placeholder="Search stores..."
-                  value={searchQuery}
-                  onChange={e => setSearchQuery(e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '8px 12px',
-                    paddingLeft: '32px',
-                    borderRadius: '8px',
-                    border: `1px solid ${colors.border}`,
-                    backgroundColor: colors.background,
-                    color: colors.text,
-                    fontSize: '15px',
-                    outline: 'none',
-                    transition: 'border-color 0.2s ease'
-                  }}
-                />
-                <svg
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke={colors.secondaryText}
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  style={{
-                    position: 'absolute',
-                    left: '10px',
-                    top: '50%',
-                    transform: 'translateY(-50%)',
-                    pointerEvents: 'none'
-                  }}
-                >
-                  <circle cx="11" cy="11" r="8"/>
-                  <line x1="21" y1="21" x2="16.65" y2="16.65"/>
-                </svg>
-              </div>
-            </div>
-            <div style={{
-              flex: 1,
-              overflowY: 'auto',
-              padding: '0.5rem',
-              minHeight: 0
-            }}>
-              {Object.entries(filteredGroups).map(([countryName, country]) => (
-                <div key={countryName} style={{ marginBottom: '16px' }}>
-                  <button
-                    onClick={() => handleCountryClick(countryName)}
-                    style={{
-                      width: '100%',
-                      padding: '8px 12px',
-                      backgroundColor: 'transparent',
-                      border: 'none',
-                      borderRadius: '8px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      cursor: 'pointer',
-                      color: colors.text,
-                      transition: 'background-color 0.2s ease',
-                    }}
-                    onMouseOver={e => {
-                      e.currentTarget.style.backgroundColor = isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)';
-                    }}
-                    onMouseOut={e => {
-                      e.currentTarget.style.backgroundColor = 'transparent';
-                    }}
-                  >
-                    <h3 style={{
-                      fontSize: '17px',
-                      fontWeight: '600',
-                      margin: 0,
-                      color: colors.text,
-                      textAlign: 'left',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px'
-                    }}>
-                      {countryName}
-                      <span style={{
-                        fontSize: '13px',
-                        fontWeight: '500',
-                        color: colors.secondaryText,
-                        backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)',
-                        padding: '2px 6px',
-                        borderRadius: '12px'
-                      }}>
-                        {Object.values(country.states).reduce((acc, state) => acc + state.stores.length, 0)}
-                      </span>
-                    </h3>
-                    <svg
-                      width="16"
-                      height="16"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke={colors.text}
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      style={{
-                        transform: expandedCountries[countryName] ? 'rotate(90deg)' : 'rotate(0deg)',
-                        transition: 'transform 0.2s ease'
-                      }}
-                    >
-                      <polyline points="9 18 15 12 9 6" />
-                    </svg>
-                  </button>
-                  {expandedCountries[countryName] && Object.entries(country.states).map(([stateName, state]) => (
-                    <div key={stateName} style={{ marginLeft: '12px', marginTop: '8px' }}>
-                      <button
-                        onClick={() => handleStateClick(stateName)}
-                        style={{
-                          width: '100%',
-                          padding: '6px 12px',
-                          backgroundColor: 'transparent',
-                          border: 'none',
-                          borderRadius: '8px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          cursor: 'pointer',
-                          color: colors.text,
-                          transition: 'background-color 0.2s ease',
-                        }}
-                        onMouseOver={e => {
-                          e.currentTarget.style.backgroundColor = isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)';
-                        }}
-                        onMouseOut={e => {
-                          e.currentTarget.style.backgroundColor = 'transparent';
-                        }}
-                      >
-                        <h4 style={{
-                          fontSize: '15px',
-                          fontWeight: '500',
-                          margin: 0,
-                          color: colors.text,
-                          textAlign: 'left',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '8px'
-                        }}>
-                          {stateName}
-                          <span style={{
-                            fontSize: '12px',
-                            fontWeight: '500',
-                            color: colors.secondaryText,
-                            backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)',
-                            padding: '1px 5px',
-                            borderRadius: '10px'
-                          }}>
-                            {state.stores.length}
-                          </span>
-                        </h4>
-                        <svg
-                          width="14"
-                          height="14"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke={colors.text}
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          style={{
-                            transform: expandedStates[stateName] ? 'rotate(90deg)' : 'rotate(0deg)',
-                            transition: 'transform 0.2s ease'
-                          }}
-                        >
-                          <polyline points="9 18 15 12 9 6" />
-                        </svg>
-                      </button>
-                      {expandedStates[stateName] && (
-                        <div style={{ marginLeft: '12px', marginTop: '4px' }}>
-                          {state.stores.map(store => (
-                            <button
-                              key={store.id}
-                              onClick={() => handleStoreClick(store)}
-                              style={{
-                                width: '100%',
-                                padding: '12px',
-                                marginBottom: '8px',
-                                backgroundColor: selectedStore === store.id ? '#FF9500' : 'transparent',
-                                border: 'none',
-                                borderRadius: '8px',
-                                textAlign: 'left',
-                                cursor: 'pointer',
-                                transition: 'background-color 0.2s ease',
-                                color: selectedStore === store.id ? '#FFFFFF' : colors.text
-                              }}
-                            >
-                              <div style={{
-                                fontSize: '15px',
-                                fontWeight: '600',
-                                marginBottom: '4px'
-                              }}>
-                                {store.name}
-                              </div>
-                              <div style={{
-                                fontSize: '13px',
-                                color: selectedStore === store.id ? 'rgba(255, 255, 255, 0.8)' : colors.secondaryText
-                              }}>
-                                {store.address}
-                              </div>
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+          {renderSelectedStorePanel()}
+          {renderFloatingStorePanel()}
+        </div>
       </main>
+
+      {isSubmitOpen && (
+        <SubmitStoreModal colors={colors} isDarkMode={isDarkMode} onClose={() => setIsSubmitOpen(false)} />
+      )}
     </div>
   );
 }
+
+function Chevron({ expanded, color, size }: { expanded: boolean; color: string; size: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke={color}
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      style={{
+        transform: expanded ? 'rotate(90deg)' : 'rotate(0deg)',
+        transition: 'transform 0.2s ease',
+        flexShrink: 0
+      }}
+    >
+      <polyline points="9 18 15 12 9 6" />
+    </svg>
+  );
+}
+
+function SubmitStoreModal({
+  colors,
+  isDarkMode,
+  onClose
+}: {
+  colors: typeof lightColors;
+  isDarkMode: boolean;
+  onClose: () => void;
+}) {
+  const [form, setForm] = useState({
+    name: '',
+    address: '',
+    website: '',
+    hours: '',
+    notes: ''
+  });
+
+  const updateField = (field: keyof typeof form, value: string) => {
+    setForm(prev => ({ ...prev, [field]: value }));
+  };
+
+  const subject = encodeURIComponent(`New stationery store: ${form.name || 'Store submission'}`);
+  const body = encodeURIComponent(
+    [
+      `Store name: ${form.name}`,
+      `Address: ${form.address}`,
+      `Website: ${form.website}`,
+      `Hours: ${form.hours}`,
+      '',
+      `Notes: ${form.notes}`
+    ].join('\n')
+  );
+
+  return (
+    <div
+      style={{
+        position: 'fixed',
+        inset: 0,
+        backgroundColor: 'rgba(0, 0, 0, 0.38)',
+        zIndex: 100,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '16px'
+      }}
+      onClick={onClose}
+    >
+      <div
+        style={{
+          width: 'min(520px, 100%)',
+          backgroundColor: colors.card,
+          border: `1px solid ${colors.border}`,
+          borderRadius: '8px',
+          boxShadow: `0 24px 60px ${colors.shadow}`,
+          padding: '18px',
+          color: colors.text
+        }}
+        onClick={event => event.stopPropagation()}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px' }}>
+          <div>
+            <h2 style={{ margin: 0, fontSize: '20px', fontWeight: 800 }}>Submit a Store</h2>
+            <p style={{ color: colors.secondaryText, fontSize: '14px', margin: '6px 0 0' }}>
+              Add the details you know. The email will open pre-filled.
+            </p>
+          </div>
+          <button onClick={onClose} aria-label="Close submit form" style={iconButtonStyle(colors)}>
+            <CloseIcon />
+          </button>
+        </div>
+
+        <div style={{ display: 'grid', gap: '10px', marginTop: '16px' }}>
+          <FormField
+            label="Store name"
+            value={form.name}
+            colors={colors}
+            isDarkMode={isDarkMode}
+            onChange={value => updateField('name', value)}
+          />
+          <FormField
+            label="Address"
+            value={form.address}
+            colors={colors}
+            isDarkMode={isDarkMode}
+            onChange={value => updateField('address', value)}
+          />
+          <FormField
+            label="Website"
+            value={form.website}
+            colors={colors}
+            isDarkMode={isDarkMode}
+            onChange={value => updateField('website', value)}
+          />
+          <FormField
+            label="Hours"
+            value={form.hours}
+            colors={colors}
+            isDarkMode={isDarkMode}
+            onChange={value => updateField('hours', value)}
+          />
+          <FormField
+            label="Notes"
+            value={form.notes}
+            colors={colors}
+            isDarkMode={isDarkMode}
+            onChange={value => updateField('notes', value)}
+            multiline
+          />
+        </div>
+
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '16px' }}>
+          <button onClick={onClose} style={secondaryButtonStyle(colors)}>
+            Cancel
+          </button>
+          <a href={`mailto:hello@penedex.com?subject=${subject}&body=${body}`} style={actionLinkStyle(colors.accent, '#FFFFFF')}>
+            Open Email
+          </a>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function FormField({
+  label,
+  value,
+  colors,
+  isDarkMode,
+  onChange,
+  multiline = false
+}: {
+  label: string;
+  value: string;
+  colors: typeof lightColors;
+  isDarkMode: boolean;
+  onChange: (value: string) => void;
+  multiline?: boolean;
+}) {
+  const baseStyle = {
+    width: '100%',
+    border: `1px solid ${colors.border}`,
+    borderRadius: '8px',
+    backgroundColor: isDarkMode ? '#11100F' : '#FBFAF7',
+    color: colors.text,
+    fontSize: '14px',
+    padding: '10px 11px',
+    boxSizing: 'border-box' as const,
+    outline: 'none',
+    fontFamily: 'inherit'
+  };
+
+  return (
+    <label style={{ display: 'grid', gap: '6px', color: colors.text, fontSize: '13px', fontWeight: 700 }}>
+      {label}
+      {multiline ? (
+        <textarea value={value} onChange={event => onChange(event.target.value)} rows={3} style={baseStyle} />
+      ) : (
+        <input value={value} onChange={event => onChange(event.target.value)} style={baseStyle} />
+      )}
+    </label>
+  );
+}
+
+function CloseIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+      <line x1="18" y1="6" x2="6" y2="18" />
+      <line x1="6" y1="6" x2="18" y2="18" />
+    </svg>
+  );
+}
+
+function LocateIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="3" />
+      <path d="M12 2v3" />
+      <path d="M12 19v3" />
+      <path d="M2 12h3" />
+      <path d="M19 12h3" />
+      <circle cx="12" cy="12" r="8" />
+    </svg>
+  );
+}
+
+function MoonIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+    </svg>
+  );
+}
+
+function SunIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="5" />
+      <line x1="12" y1="1" x2="12" y2="3" />
+      <line x1="12" y1="21" x2="12" y2="23" />
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+      <line x1="1" y1="12" x2="3" y2="12" />
+      <line x1="21" y1="12" x2="23" y2="12" />
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+    </svg>
+  );
+}
+
+const headerButtonStyle = (colors: typeof lightColors) => ({
+  backgroundColor: colors.accentSoft,
+  border: `1px solid ${colors.border}`,
+  color: colors.text,
+  fontSize: '14px',
+  fontWeight: 800,
+  padding: '9px 12px',
+  borderRadius: '8px',
+  cursor: 'pointer',
+  whiteSpace: 'nowrap' as const
+});
+
+const iconButtonStyle = (colors: typeof lightColors) => ({
+  backgroundColor: 'transparent',
+  border: `1px solid ${colors.border}`,
+  color: colors.text,
+  width: '38px',
+  height: '38px',
+  borderRadius: '8px',
+  cursor: 'pointer',
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  padding: 0
+});
+
+const secondaryButtonStyle = (colors: typeof lightColors) => ({
+  backgroundColor: 'transparent',
+  border: `1px solid ${colors.border}`,
+  color: colors.text,
+  fontSize: '14px',
+  fontWeight: 800,
+  padding: '10px 13px',
+  borderRadius: '8px',
+  cursor: 'pointer'
+});
+
+const actionLinkStyle = (backgroundColor: string, color: string, borderColor?: string) => ({
+  backgroundColor,
+  border: `1px solid ${borderColor ?? backgroundColor}`,
+  color,
+  textDecoration: 'none',
+  fontSize: '14px',
+  fontWeight: 800,
+  padding: '10px 13px',
+  borderRadius: '8px',
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center'
+});
+
+const glassBackground = (colors: typeof lightColors, isDarkMode: boolean) =>
+  isDarkMode
+    ? `linear-gradient(145deg, rgba(29, 27, 25, 0.92), rgba(29, 27, 25, 0.76)), ${colors.panel}`
+    : `linear-gradient(145deg, rgba(255, 255, 255, 0.92), rgba(255, 248, 239, 0.76)), ${colors.panel}`;
+
+const mapControlStyle = (colors: typeof lightColors) => ({
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: '8px',
+  backgroundColor: colors.mapOverlay,
+  border: `1px solid ${colors.border}`,
+  color: colors.text,
+  boxShadow: `0 8px 22px ${colors.shadow}`,
+  borderRadius: '8px',
+  padding: '10px 12px',
+  fontSize: '13px',
+  fontWeight: 800,
+  cursor: 'pointer',
+  backdropFilter: 'blur(16px)'
+});
 
 export default App;
