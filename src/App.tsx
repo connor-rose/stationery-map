@@ -13,6 +13,7 @@ const LAST_UPDATED = 'July 2026';
 const SOURCE_ID = 'stores';
 const SELECTED_SOURCE_ID = 'selected-store';
 const USER_LOCATION_SOURCE_ID = 'user-location';
+const SUBMIT_STORE_FORM_URL = 'https://inkspots.notion.site/29ec01da38f64c30829800d5012ba45c?pvs=105';
 
 const lightColors = {
   background: '#F4F1EC',
@@ -105,7 +106,6 @@ function App() {
   });
   const [expandedStates, setExpandedStates] = useState<{ [key: string]: boolean }>({});
   const [isMobileListOpen, setIsMobileListOpen] = useState(false);
-  const [isSubmitOpen, setIsSubmitOpen] = useState(false);
   const [locationError, setLocationError] = useState<string | null>(null);
   const [isLocating, setIsLocating] = useState(false);
 
@@ -1030,9 +1030,14 @@ function App() {
                 Show Stores
               </button>
             )}
-            <button onClick={() => setIsSubmitOpen(true)} style={headerButtonStyle(colors)}>
+            <a
+              href={SUBMIT_STORE_FORM_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={headerButtonStyle(colors)}
+            >
               Submit Store
-            </button>
+            </a>
             <button
               onClick={() => setIsDarkMode(!isDarkMode)}
               aria-label="Toggle color mode"
@@ -1135,10 +1140,6 @@ function App() {
           {renderFloatingStorePanel()}
         </div>
       </main>
-
-      {isSubmitOpen && (
-        <SubmitStoreModal colors={colors} isDarkMode={isDarkMode} onClose={() => setIsSubmitOpen(false)} />
-      )}
     </div>
   );
 }
@@ -1162,169 +1163,6 @@ function Chevron({ expanded, color, size }: { expanded: boolean; color: string; 
     >
       <polyline points="9 18 15 12 9 6" />
     </svg>
-  );
-}
-
-function SubmitStoreModal({
-  colors,
-  isDarkMode,
-  onClose
-}: {
-  colors: typeof lightColors;
-  isDarkMode: boolean;
-  onClose: () => void;
-}) {
-  const [form, setForm] = useState({
-    name: '',
-    address: '',
-    website: '',
-    hours: '',
-    notes: ''
-  });
-
-  const updateField = (field: keyof typeof form, value: string) => {
-    setForm(prev => ({ ...prev, [field]: value }));
-  };
-
-  const subject = encodeURIComponent(`New stationery store: ${form.name || 'Store submission'}`);
-  const body = encodeURIComponent(
-    [
-      `Store name: ${form.name}`,
-      `Address: ${form.address}`,
-      `Website: ${form.website}`,
-      `Hours: ${form.hours}`,
-      '',
-      `Notes: ${form.notes}`
-    ].join('\n')
-  );
-
-  return (
-    <div
-      style={{
-        position: 'fixed',
-        inset: 0,
-        backgroundColor: 'rgba(0, 0, 0, 0.38)',
-        zIndex: 100,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '16px'
-      }}
-      onClick={onClose}
-    >
-      <div
-        style={{
-          width: 'min(520px, 100%)',
-          backgroundColor: colors.card,
-          border: `1px solid ${colors.border}`,
-          borderRadius: '8px',
-          boxShadow: `0 24px 60px ${colors.shadow}`,
-          padding: '18px',
-          color: colors.text
-        }}
-        onClick={event => event.stopPropagation()}
-      >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px' }}>
-          <div>
-            <h2 style={{ margin: 0, fontSize: '20px', fontWeight: 800 }}>Submit a Store</h2>
-            <p style={{ color: colors.secondaryText, fontSize: '14px', margin: '6px 0 0' }}>
-              Add the details you know. The email will open pre-filled.
-            </p>
-          </div>
-          <button onClick={onClose} aria-label="Close submit form" style={iconButtonStyle(colors)}>
-            <CloseIcon />
-          </button>
-        </div>
-
-        <div style={{ display: 'grid', gap: '10px', marginTop: '16px' }}>
-          <FormField
-            label="Store name"
-            value={form.name}
-            colors={colors}
-            isDarkMode={isDarkMode}
-            onChange={value => updateField('name', value)}
-          />
-          <FormField
-            label="Address"
-            value={form.address}
-            colors={colors}
-            isDarkMode={isDarkMode}
-            onChange={value => updateField('address', value)}
-          />
-          <FormField
-            label="Website"
-            value={form.website}
-            colors={colors}
-            isDarkMode={isDarkMode}
-            onChange={value => updateField('website', value)}
-          />
-          <FormField
-            label="Hours"
-            value={form.hours}
-            colors={colors}
-            isDarkMode={isDarkMode}
-            onChange={value => updateField('hours', value)}
-          />
-          <FormField
-            label="Notes"
-            value={form.notes}
-            colors={colors}
-            isDarkMode={isDarkMode}
-            onChange={value => updateField('notes', value)}
-            multiline
-          />
-        </div>
-
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '16px' }}>
-          <button onClick={onClose} style={secondaryButtonStyle(colors)}>
-            Cancel
-          </button>
-          <a href={`mailto:hello@penedex.com?subject=${subject}&body=${body}`} style={actionLinkStyle(colors.accent, '#FFFFFF')}>
-            Open Email
-          </a>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function FormField({
-  label,
-  value,
-  colors,
-  isDarkMode,
-  onChange,
-  multiline = false
-}: {
-  label: string;
-  value: string;
-  colors: typeof lightColors;
-  isDarkMode: boolean;
-  onChange: (value: string) => void;
-  multiline?: boolean;
-}) {
-  const baseStyle = {
-    width: '100%',
-    border: `1px solid ${colors.border}`,
-    borderRadius: '8px',
-    backgroundColor: isDarkMode ? '#11100F' : '#FBFAF7',
-    color: colors.text,
-    fontSize: '14px',
-    padding: '10px 11px',
-    boxSizing: 'border-box' as const,
-    outline: 'none',
-    fontFamily: 'inherit'
-  };
-
-  return (
-    <label style={{ display: 'grid', gap: '6px', color: colors.text, fontSize: '13px', fontWeight: 700 }}>
-      {label}
-      {multiline ? (
-        <textarea value={value} onChange={event => onChange(event.target.value)} rows={3} style={baseStyle} />
-      ) : (
-        <input value={value} onChange={event => onChange(event.target.value)} style={baseStyle} />
-      )}
-    </label>
   );
 }
 
@@ -1378,11 +1216,15 @@ const headerButtonStyle = (colors: typeof lightColors) => ({
   backgroundColor: colors.accentSoft,
   border: `1px solid ${colors.border}`,
   color: colors.text,
+  textDecoration: 'none',
   fontSize: '14px',
   fontWeight: 800,
   padding: '9px 12px',
   borderRadius: '8px',
   cursor: 'pointer',
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
   whiteSpace: 'nowrap' as const
 });
 
@@ -1398,17 +1240,6 @@ const iconButtonStyle = (colors: typeof lightColors) => ({
   alignItems: 'center',
   justifyContent: 'center',
   padding: 0
-});
-
-const secondaryButtonStyle = (colors: typeof lightColors) => ({
-  backgroundColor: 'transparent',
-  border: `1px solid ${colors.border}`,
-  color: colors.text,
-  fontSize: '14px',
-  fontWeight: 800,
-  padding: '10px 13px',
-  borderRadius: '8px',
-  cursor: 'pointer'
 });
 
 const actionLinkStyle = (backgroundColor: string, color: string, borderColor?: string) => ({
